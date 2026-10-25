@@ -1,0 +1,27 @@
+{
+  "name": "@codeaudit/database",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "validate": "prisma validate",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src prisma.config.ts --max-warnings 0",
+    "check:connection": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code",
+    "generate": "prisma generate",
+    "build": "pnpm generate && tsc -p tsconfig.build.json",
+    "migrate:deploy": "prisma migrate deploy",
+    "migrate:dev": "prisma migrate dev"
+  },
+  "devDependencies": {
+    "@codeaudit/config": "workspace:*",
+    "prisma": "7.10.1",
+    "@types/pg": "^8.15.0"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "dependencies": {
+    "@prisma/client": "7.10.1",
+    "@prisma/adapter-pg": "7.10.1",
+    "pg": "^8.16.0"
+  }
+}

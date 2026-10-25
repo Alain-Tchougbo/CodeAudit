@@ -1,0 +1,23 @@
+{
+  "name": "@codeaudit/analysis-jobs",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
+    "lint": "eslint src test --max-warnings 0",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@codeaudit/analyzer": "workspace:*",
+    "@codeaudit/database": "workspace:*",
+    "yauzl": "3.4.0"
+  },
+  "devDependencies": {
+    "@codeaudit/config": "workspace:*",
+    "@types/yauzl": "^3.2.0",
+    "vitest": "^4.1.12"
+  }
+}

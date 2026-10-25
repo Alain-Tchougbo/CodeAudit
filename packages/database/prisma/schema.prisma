@@ -1,0 +1,56 @@
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  moduleFormat           = "cjs"
+  generatedFileExtension = "ts"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Project {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String     @db.VarChar(120)
+  description String?    @db.VarChar(2000)
+  createdAt   DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime   @default(now()) @updatedAt @db.Timestamptz(3)
+  analyses    Analysis[]
+
+  @@index([createdAt, id])
+}
+
+model Analysis {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId        String         @db.Uuid
+  project          Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status           AnalysisStatus @default(QUEUED)
+  createdAt        DateTime       @default(now()) @db.Timestamptz(3)
+  startedAt        DateTime?      @db.Timestamptz(3)
+  finishedAt       DateTime?      @db.Timestamptz(3)
+  heartbeatAt      DateTime?      @db.Timestamptz(3)
+  leaseExpiresAt   DateTime?      @db.Timestamptz(3)
+  deadlineAt       DateTime?      @db.Timestamptz(3)
+  lockToken        String?        @unique @db.Uuid
+  workerId         String?        @db.VarChar(120)
+  sourceKey        String?        @unique @db.Uuid
+  sourceDigest     String?        @db.Char(64)
+  sourcesDeletedAt DateTime?      @db.Timestamptz(3)
+  profileVersion   String?        @db.VarChar(120)
+  report           Json?
+  statistics       Json?
+  errorCode        String?        @db.VarChar(64)
+  errorMessage     String?        @db.VarChar(500)
+
+  @@index([projectId, status])
+  @@index([status, createdAt, id])
+  @@index([status, leaseExpiresAt])
+}
+
+enum AnalysisStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}

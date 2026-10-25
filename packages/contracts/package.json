@@ -1,0 +1,23 @@
+{
+  "name": "@codeaudit/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json && node -e \"require('node:fs').writeFileSync('dist/esm/package.json',JSON.stringify({type:'module'}))\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.esm.json --noEmit",
+    "lint": "eslint src --max-warnings 0"
+  },
+  "devDependencies": {
+    "@codeaudit/config": "workspace:*"
+  }
+}

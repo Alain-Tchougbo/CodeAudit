@@ -1,0 +1,39 @@
+{
+  "name": "codeaudit",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=24.15.0 <25"
+  },
+  "scripts": {
+    "dev": "pnpm build:packages && pnpm --parallel --filter \"./apps/*\" dev",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "pnpm build:packages && pnpm typecheck:tools && pnpm -r typecheck",
+    "build": "pnpm -r build",
+    "test": "pnpm -r --if-present test",
+    "test:e2e": "pnpm build && playwright test",
+    "test:e2e:install": "playwright install chromium",
+    "db:validate": "pnpm --filter @codeaudit/database validate",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:down": "docker compose down",
+    "check": "pnpm lint && pnpm typecheck && pnpm build && pnpm test && pnpm db:validate",
+    "build:packages": "pnpm --filter @codeaudit/contracts --filter @codeaudit/analyzer --filter @codeaudit/database --filter @codeaudit/analysis-jobs build",
+    "typecheck:tools": "tsc -p tsconfig.tools.json",
+    "db:check": "pnpm --filter @codeaudit/database check:connection",
+    "db:generate": "pnpm --filter @codeaudit/database generate",
+    "db:migrate": "pnpm --filter @codeaudit/database migrate:deploy",
+    "db:migrate:dev": "pnpm --filter @codeaudit/database migrate:dev",
+    "test:integration": "pnpm build && pnpm --filter @codeaudit/api test:integration"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.58.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^10.13.0",
+    "eslint-plugin-vue": "^10.0.0",
+    "globals": "^16.0.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.1"
+  }
+}

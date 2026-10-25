@@ -1,0 +1,166 @@
+# Exécution des analyses
+
+L'API importe un ZIP, valide et extrait ses sources avant de créer un travail
+QUEUED dans PostgreSQL. Le worker est un processus indépendant. Les règles et le
+moteur restent dans `packages/analyzer`, sans dépendance envers la file ni Prisma.
+`packages/analysis-jobs` contient le stockage, l'import sécurisé et la file partagés
+entre l'API et le worker.
+
+## Démarrage et utilisation
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm db:up
+pnpm db:migrate
+pnpm dev
+```
+
+`pnpm dev` lance l'API, Vue et le worker. Pour lancer le worker compilé seul :
+`pnpm build`, puis `pnpm --filter @codeaudit/worker start`.
+L'API et tous les workers doivent utiliser la même base et le même répertoire
+local de sources, accessible au même utilisateur système. Par défaut :
+`.tmp/imports` à la racine du dépôt. Surcharge : variable d'environnement du terminal
+`CODEAUDIT_STORAGE_ROOT`, chemin absolu ou relatif à la racine du dépôt.
+Ce n'est pas un déploiement distribué sur plusieurs machines.
+
+| Méthode | Endpoint | Comportement |
+| --- | --- | --- |
+| POST | `/api/projects/:projectId/analyses` | Champ multipart `archive`, réponse 202 avec identifiant et état QUEUED |
+| GET | `/api/analyses/:id` | État, dates, compteurs et erreur technique éventuelle |
+| GET | `/api/projects/:projectId/analyses?limit=50&cursor=UUID` | Historique décroissant, `items` et `nextCursor` ; limite 1 à 100 |
+| GET | `/api/analyses/:id/results` | Rapport JSON complet, uniquement après SUCCEEDED ; sinon 409 |
+
+Exemple avec un projet déjà créé, depuis PowerShell :
+
+```powershell
+$projectId = 'REMPLACER_PAR_UUID_PROJET'
+$queued = curl.exe --fail-with-body -s -F 'archive=@C:/sources/projet.zip' "http://127.0.0.1:3000/api/projects/$projectId/analyses" | ConvertFrom-Json
+Invoke-RestMethod "http://127.0.0.1:3000/api/analyses/$($queued.id)"
+Invoke-RestMethod "http://127.0.0.1:3000/api/projects/$projectId/analyses"
+# Après passage à SUCCEEDED :
+curl.exe --fail-with-body -o rapport.json "http://127.0.0.1:3000/api/analyses/$($queued.id)/results"
+```
+
+Les UUID invalides, archives absentes ou dangereuses sont rejetés ; ressource
+inexistante : 404 ; limite de taille : 413 ; deux extractions déjà en cours dans
+une instance API : 429. Le nom et le type MIME fournis ne sont pas considérés
+comme une preuve de validité du ZIP. Les chemins internes et jetons de réservation
+ne sont pas exposés. Les écrans de lancement/suivi des analyses restent à développer.
+
+## File, concurrence et interruption
+
+États : `QUEUED → RUNNING → SUCCEEDED | FAILED`.
+Des diagnostics ESLint, y compris erreurs de syntaxe, donnent SUCCEEDED lorsque
+le moteur a produit un rapport. FAILED signifie un échec technique.
+
+La réservation utilise une seule instruction SQL avec CTE, verrou de ligne
+`FOR UPDATE SKIP LOCKED` et mise à jour conditionnelle de QUEUED vers RUNNING.
+Chaque réservation reçoit un jeton UUID unique. Un worker traite un travail à
+la fois ; plusieurs processus peuvent prendre des travaux différents.
+Le bail dure 15 secondes, renouvelé toutes les 5 secondes, sans dépasser le délai
+maximal de l'analyse. Le temps de validité est contrôlé côté PostgreSQL.
+Le rapport, le profil, les compteurs et SUCCEEDED sont publiés atomiquement,
+uniquement si le jeton, l'état et les échéances sont encore valides.
+
+Un ancien worker ne peut ni renouveler un bail expiré ni publier tardivement.
+Au démarrage puis entre les travaux, avec un intervalle minimal de 5 secondes,
+les RUNNING expirés deviennent FAILED
+avec WORKER_INTERRUPTED ou ANALYSIS_TIMEOUT. Ils ne sont jamais remis en QUEUED :
+un même identifiant n'est donc jamais exécuté par deux workers, même si le premier
+processus reprend après une pause. Les QUEUED persistés sont traités au redémarrage.
+Une nouvelle tentative exige un nouvel import et crée un nouvel identifiant.
+
+Extraction et analyse tournent dans des `worker_threads` contrôlés. Timeout ou
+SIGINT/SIGTERM demandent leur arrêt ; la terminaison effective est attendue avant
+la finalisation et le nettoyage. L'arrêt brutal du processus arrête aussi ses threads.
+Après indisponibilité de PostgreSQL, le worker retente sa boucle ; une réservation
+qui n'a pas pu être finalisée sera réconciliée après expiration.
+
+## Protection des sources
+
+| Limite | Valeur |
+| --- | --- |
+| ZIP reçu | 10 Mio, flux multipart borné |
+| Entrées ZIP et fichiers/dossiers matérialisés | 2 000 maximum chacun, dossiers implicites inclus |
+| Un fichier décompressé | 5 Mio |
+| Total réellement décompressé | 50 Mio |
+| Profondeur / longueur d'un chemin | 32 segments / 1 024 caractères |
+| Extraction / analyse | 60 secondes chacune |
+| Rapport JSON | 10 Mio |
+
+Chemins absolus, traversées, séparateurs Windows, noms de périphériques, liens
+symboliques, fichiers spéciaux, doublons après normalisation Unicode/casse et
+conflits fichier/dossier sont refusés. Les fichiers sont créés exclusivement dans
+un répertoire UUID généré côté serveur. Le stockage refuse les liens sur les
+répertoires de travail et vérifie leur appartenance avant toute suppression.
+Chiffrement et méthodes autres que ZIP stocké/deflate sont refusés. Les tailles
+déclarées et réellement lues ainsi que les CRC sont contrôlés. Les ZIP imbriqués
+ne sont jamais extraits récursivement. Même les fichiers ignorés par ESLint
+comptent dans les limites de l'import.
+
+Aucun `npm install`, script du projet, import de son code ou chargement de sa
+configuration ESLint n'est lancé. Seuls le moteur, les règles et les plugins
+installés et contrôlés par CodeAudit sont utilisés. Aucun autofix.
+
+Les limites V8 des threads sont 384 Mio pour l'ancienne génération, 64 Mio pour
+la jeune génération et 4 Mio de pile. Elles ne bornent pas la mémoire RSS totale.
+Les threads ne constituent pas une isolation système ni une interdiction réseau.
+Une limite mémoire globale ou une isolation OS renforcée nécessiterait un
+conteneur/cgroup ou un mécanisme équivalent ; ce mécanisme n'est pas implémenté ici.
+
+## Suppression et conservation
+
+Les sources sont supprimées après rejet, réussite ou échec, une fois le calcul
+arrêté. En cas d'échec de suppression d'un travail terminé, sa référence reste
+en base pour permettre une nouvelle tentative ; le worker journalise les échecs
+persistants lors de la maintenance. Les répertoires UUID non référencés et âgés
+de plus de 24 heures sont nettoyés par la maintenance. Ce délai protège notamment
+un import dont le travail n'est pas encore enregistré.
+
+Les rapports et métadonnées restent en PostgreSQL jusqu'à suppression explicite
+du projet. Cette suppression est refusée lorsqu'une analyse est QUEUED ou RUNNING.
+Une erreur de nettoyage ne supprime ni ne modifie un rapport terminé. Les sources
+ne sont pas enregistrées en base ni ajoutées au rapport JSON.
+
+Migration versionnée : `20261030000200_analysis_execution`. Elle ajoute les
+horodatages, baux, jetons, références temporaires, rapports JSONB et index de file.
+
+## Vérifications reproductibles
+
+```powershell
+pnpm check
+# Tests ciblés après compilation des packages partagés :
+pnpm build:packages
+pnpm --filter @codeaudit/analysis-jobs test
+# PostgreSQL dédié, nom de base terminé par _test ; migrations appliquées :
+$env:TEST_DATABASE_URL = 'postgresql://codeaudit:codeaudit@127.0.0.1:5432/codeaudit_test?schema=public'
+pnpm test:integration
+```
+
+Les tests ZIP utilisent de vraies archives, dont tailles mensongères, CRC invalides,
+liens, collisions, traversées et dépassements. Les tests de threads exercent
+timeout, crash et interruption réels. Les tests Supertest/Prisma utilisent deux
+connexions PostgreSQL pour les réservations concurrentes, vérifient les anciens
+jetons, les résultats et le nettoyage. Un test démarre un vrai processus worker,
+le tue brutalement et démarre son remplaçant. Il avance ensuite l'expiration du
+bail en base pour éviter d'attendre 15 secondes. Les défaillances de nettoyage
+sont injectées ; il ne s'agit pas d'une panne physique du disque.
+
+## Bilan de vérification de cette implémentation
+
+Vérifications exécutées localement sous Windows, Node 24.15 et PostgreSQL 17 réel :
+
+| Commande | Résultat |
+| --- | --- |
+| `pnpm install --frozen-lockfile` | Réussite, lockfile à jour |
+| `pnpm check` | Lint, typage, builds et validation Prisma réussis ; 83 tests réussis |
+| `pnpm test:integration` | 44 tests réussis : 15 exécution/import et 29 projets |
+| `pnpm db:check` sur la base de test | Connexion réussie et aucune dérive du schéma |
+
+Les 83 tests comprennent 24 tests analyzer, 16 frontend, 34 sécurité/threads/stockage
+et 9 tests API unitaires. La migration d'exécution a été appliquée à la base locale
+et à la base de test dédiée. La première passe a révélé une conversion SQL manquante
+pour les durées du bail et une course sur les erreurs de flux ZIP : ces défauts ont
+été corrigés avant les passes finales réussies. Les tests navigateur Playwright
+n'ont pas été relancés pour ce lot. L'avertissement Node sur les VM Modules
+expérimentaux de Jest/Prisma reste présent, sans échec de test.

@@ -1,0 +1,22 @@
+{
+  "name": "@codeaudit/analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "lint": "eslint src test vitest.config.mts --max-warnings 0",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "eslint": "10.13.0",
+    "typescript-eslint": "8.72.1",
+    "typescript": "5.9.3"
+  },
+  "devDependencies": {
+    "@codeaudit/config": "workspace:*",
+    "vitest": "^4.1.12"
+  }
+}

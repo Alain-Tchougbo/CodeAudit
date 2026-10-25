@@ -1,0 +1,124 @@
+import { randomUUID } from 'node:crypto';
+import { Prisma, type PrismaClient } from '@codeaudit/database';
+import type { AnalysisReport } from '@codeaudit/analyzer';
+import { EXECUTION_LIMITS, JobError } from './limits';
+import type { SourceStore } from './storage';
+
+export interface Claim {
+  id: string;
+  projectId: string;
+  sourceKey: string | null;
+  lockToken: string;
+  deadlineAt: Date;
+}
+
+export interface ReservationOptions { leaseMs?: number; analysisMs?: number }
+
+export class AnalysisQueue {
+  constructor(readonly client: PrismaClient) {}
+
+  async enqueue(projectId: string, sources: { key: string; digest: string }) {
+    return this.client.analysis.create({
+      data: { projectId, sourceKey: sources.key, sourceDigest: sources.digest },
+    });
+  }
+
+  async claim(workerId: string, options: ReservationOptions = {}): Promise<Claim | null> {
+    const leaseMs = options.leaseMs ?? EXECUTION_LIMITS.leaseMs;
+    const analysisMs = options.analysisMs ?? EXECUTION_LIMITS.analysisMs;
+    if (![leaseMs, analysisMs].every((value) => Number.isSafeInteger(value) && value > 0)) throw new JobError('INVALID_OPTIONS', 'Durées de réservation invalides.');
+    const token = randomUUID();
+    const rows = await this.client.$queryRaw<Claim[]>(Prisma.sql`
+      WITH candidate AS (
+        SELECT "id" FROM "Analysis"
+        WHERE "status" = 'QUEUED'
+        ORDER BY "createdAt", "id"
+        FOR UPDATE SKIP LOCKED LIMIT 1
+      )
+      UPDATE "Analysis" AS analysis SET
+        "status" = 'RUNNING', "workerId" = ${workerId}, "lockToken" = ${token}::uuid,
+        "startedAt" = clock_timestamp(), "heartbeatAt" = clock_timestamp(),
+        "deadlineAt" = clock_timestamp() + ${analysisMs}::double precision * interval '1 millisecond',
+        "leaseExpiresAt" = clock_timestamp() + LEAST(${leaseMs}::double precision, ${analysisMs}::double precision) * interval '1 millisecond'
+      FROM candidate WHERE analysis."id" = candidate."id" AND analysis."status" = 'QUEUED'
+      RETURNING analysis."id", analysis."projectId", analysis."sourceKey", analysis."lockToken", analysis."deadlineAt"
+    `);
+    return rows[0] ?? null;
+  }
+
+  async heartbeat(id: string, token: string, leaseMs: number = EXECUTION_LIMITS.leaseMs): Promise<boolean> {
+    const count = await this.client.$executeRaw(Prisma.sql`
+      UPDATE "Analysis" SET "heartbeatAt" = clock_timestamp(),
+        "leaseExpiresAt" = LEAST("deadlineAt", clock_timestamp() + ${leaseMs}::double precision * interval '1 millisecond')
+      WHERE "id" = ${id}::uuid AND "lockToken" = ${token}::uuid AND "status" = 'RUNNING'
+        AND "leaseExpiresAt" > clock_timestamp() AND "deadlineAt" > clock_timestamp()
+    `);
+    return count === 1;
+  }
+
+  async succeed(claim: Claim, report: AnalysisReport): Promise<boolean> {
+    const json = JSON.stringify(report);
+    if (Buffer.byteLength(json) > EXECUTION_LIMITS.reportBytes) throw new JobError('RESULT_TOO_LARGE', 'Rapport trop volumineux.');
+    const count = await this.client.$executeRaw(Prisma.sql`
+      UPDATE "Analysis" SET "status" = 'SUCCEEDED', "finishedAt" = clock_timestamp(),
+        "report" = ${json}::jsonb, "statistics" = ${JSON.stringify(report.statistics)}::jsonb,
+        "profileVersion" = ${report.profile.version}, "errorCode" = NULL, "errorMessage" = NULL,
+        "lockToken" = NULL, "leaseExpiresAt" = NULL
+      WHERE "id" = ${claim.id}::uuid AND "lockToken" = ${claim.lockToken}::uuid
+        AND "status" = 'RUNNING' AND "leaseExpiresAt" > clock_timestamp() AND "deadlineAt" > clock_timestamp()
+    `);
+    return count === 1;
+  }
+
+  async fail(claim: Claim, code: string, message: string): Promise<boolean> {
+    const count = await this.client.analysis.updateMany({
+      where: { id: claim.id, lockToken: claim.lockToken, status: 'RUNNING' },
+      data: {
+        status: 'FAILED', errorCode: code.slice(0, 64), errorMessage: message.slice(0, 500),
+        finishedAt: new Date(), lockToken: null, leaseExpiresAt: null,
+      },
+    });
+    return count.count === 1;
+  }
+
+  async recoverExpired(): Promise<number> {
+    return this.client.$executeRaw(Prisma.sql`
+      UPDATE "Analysis" SET "status" = 'FAILED', "finishedAt" = clock_timestamp(),
+        "errorCode" = CASE WHEN "deadlineAt" <= clock_timestamp() THEN 'ANALYSIS_TIMEOUT' ELSE 'WORKER_INTERRUPTED' END,
+        "errorMessage" = CASE WHEN "deadlineAt" <= clock_timestamp()
+          THEN 'Le délai de traitement est dépassé.' ELSE 'Le worker a perdu sa réservation ou a été interrompu.' END,
+        "lockToken" = NULL, "leaseExpiresAt" = NULL
+      WHERE "status" = 'RUNNING' AND (
+        "leaseExpiresAt" IS NULL OR "leaseExpiresAt" <= clock_timestamp() OR "deadlineAt" <= clock_timestamp()
+      )
+    `);
+  }
+
+  async cleanup(store: SourceStore): Promise<{ removed: number; errors: number }> {
+    const records = await this.client.analysis.findMany({
+      where: { status: { in: ['SUCCEEDED', 'FAILED'] }, sourceKey: { not: null }, sourcesDeletedAt: null },
+      orderBy: { createdAt: 'asc' }, take: 50,
+      select: { id: true, sourceKey: true },
+    });
+    let removed = 0;
+    let errors = 0;
+    for (const record of records) {
+      try {
+        await store.remove(record.sourceKey!);
+        await this.client.analysis.updateMany({
+          where: { id: record.id, sourceKey: record.sourceKey, status: { in: ['SUCCEEDED', 'FAILED'] } },
+          data: { sourceKey: null, sourcesDeletedAt: new Date() },
+        });
+        removed++;
+      } catch { errors++; }
+    }
+    return { removed, errors };
+  }
+
+  async maintenance(store: SourceStore): Promise<{ removed: number; errors: number }> {
+    await this.recoverExpired();
+    const cleanup = await this.cleanup(store);
+    await store.reapOrphans(async (key) => (await this.client.analysis.count({ where: { sourceKey: key } })) > 0);
+    return cleanup;
+  }
+}
