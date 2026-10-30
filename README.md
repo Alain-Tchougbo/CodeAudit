@@ -8,7 +8,7 @@ Le moteur ESLint JavaScript/TypeScript est disponible dans packages/analyzer,
 avec profil versionné, diagnostics et statistiques. L'API importe des ZIP et expose
 le suivi, l'historique et les rapports JSON persistés. Un worker indépendant traite
 la file PostgreSQL, avec réservation atomique, délais et reprise après interruption.
-L'interface des analyses reste à développer.
+Le tableau de bord et les pages de consultation des analyses sont disponibles.
 
 ## Installation et démarrage
 
@@ -29,7 +29,7 @@ Compose, Prisma CLI et le client de l'API lisent .env à la racine ;
 les variables du terminal sont prioritaires.
 Les identifiants fournis sont destinés au poste local uniquement.
 
-Frontend : http://127.0.0.1:5173/projects.
+Frontend : http://127.0.0.1:5173/ (tableau de bord), puis /projects.
 API : http://127.0.0.1:3000/api/projects ; santé du processus : /health.
 Vite transmet /api/projects à l'API et /api/health à /health.
 PORT, WEB_PORT et API_PROXY_TARGET peuvent être définis dans le terminal pour
@@ -67,6 +67,9 @@ Suivre son état avec `GET /api/analyses/:id`, son historique avec
 `GET /api/projects/:id/analyses` et ses résultats avec `GET /api/analyses/:id/results`.
 `pnpm dev` lance aussi le worker ; API et worker partagent `.tmp/imports`.
 Voir [les commandes, limites ZIP et garanties de concurrence](docs/analyses.md).
+Le tableau de bord utilise `GET /api/dashboard` ; chaque projet donne accès à son
+historique et les rapports sont consultables dans `/analyses/:id`.
+Voir [les indicateurs et filtres de consultation](docs/consultation.md).
 
 ## Base de données et migrations
 

@@ -5,7 +5,12 @@ import type { AnalysisSummary } from '@codeaudit/contracts';
 import { PrismaService } from '../database/prisma.service';
 import type { HistoryQuery } from './history.dto';
 
-function summary(record: Analysis): AnalysisSummary {
+export const SUMMARY_SELECT = {
+  id: true, projectId: true, status: true, createdAt: true, startedAt: true, finishedAt: true,
+  profileVersion: true, errorCode: true, errorMessage: true, statistics: true,
+} as const satisfies Prisma.AnalysisSelect;
+
+export function summary(record: Pick<Analysis, keyof typeof SUMMARY_SELECT>): AnalysisSummary {
   const statistics = record.statistics as Record<string, number> | null;
   return {
     id: record.id, projectId: record.projectId, status: record.status,
@@ -73,7 +78,7 @@ export class AnalysesService {
       throw new BadRequestException({ code: 'INVALID_CURSOR', message: 'Curseur d’historique invalide.' });
     }
     const items = await this.database.client.analysis.findMany({
-      where: { projectId }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      where: { projectId }, select: SUMMARY_SELECT, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: query.limit + 1, ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
     });
     const more = items.length > query.limit;
