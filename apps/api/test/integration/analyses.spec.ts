@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -14,6 +14,7 @@ import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/configure-app';
 import { PrismaService } from '../../src/database/prisma.service';
 import { zip } from '../../../../packages/analysis-jobs/test/zip-builder';
+import { validateReportExport } from '../../src/analyses/report-export.service';
 
 async function assertStorageRoot(root: string): Promise<void> {
   if (dirname(resolve(root)) !== resolve(tmpdir()) || !basename(root).startsWith('codeaudit-execution-')) throw new Error('Unsafe cleanup');
@@ -152,6 +153,107 @@ describe('Exécution des analyses — PostgreSQL réel', () => {
     expect(next.body.nextCursor).toBeNull();
     await request(app.getHttpServer()).get(`/api/projects/${projectId}/analyses?limit=101`).expect(400);
     await request(app.getHttpServer()).get(`/api/projects/${projectId}/analyses?cursor=${randomUUID()}`).expect(400);
+  });
+
+  it('exporte un JSON conforme, complet, identique au rapport persiste et deterministe', async () => {
+    const queued = await enqueue(); await processNext(queue, store, 'export-worker');
+    const stored = await client.analysis.findUniqueOrThrow({ where: { id: queued.id } });
+    const response = await request(app.getHttpServer()).get(`/api/analyses/${queued.id}/report`).expect(200);
+    expect(response.headers['content-type']).toContain('application/json');
+    expect(response.headers['content-disposition']).toBe(`attachment; filename="codeaudit-analysis-${queued.id}.json"`);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(validateReportExport(response.body)).toBe(true);
+    expect(response.body.report).toEqual(stored.report);
+    expect(response.body.project).toEqual(stored.projectSnapshot);
+    expect(response.body.analysis).toMatchObject({ id: queued.id, projectId, status: 'SUCCEEDED',
+      createdAt: stored.createdAt.toISOString(), startedAt: stored.startedAt!.toISOString(), finishedAt: stored.finishedAt!.toISOString(),
+      durationMs: stored.finishedAt!.getTime() - stored.startedAt!.getTime(), profileVersion: stored.profileVersion, error: null });
+    expect(response.body.report.profile.engines.eslint).toMatch(/^\d+\./);
+    expect(response.body.report.statistics.durationMs).toBeGreaterThanOrEqual(0);
+    expect((await request(app.getHttpServer()).get(`/api/analyses/${queued.id}/report`).expect(200)).body).toEqual(response.body);
+    expect(response.body).not.toHaveProperty('sourceKey'); expect(response.body).not.toHaveProperty('lockToken');
+    expect((await client.analysis.findUniqueOrThrow({ where: { id: queued.id } })).report).toEqual(stored.report);
+  });
+
+  it('conserve un ancien rapport et son projet fige apres modification du projet et nouvelle analyse', async () => {
+    await client.project.update({ where: { id: projectId }, data: { name: 'Version initiale', description: 'Description initiale' } });
+    const first = await enqueue(); await processNext(queue, store, 'first');
+    const before = (await request(app.getHttpServer()).get(`/api/analyses/${first.id}/report`).expect(200)).body;
+    await client.project.update({ where: { id: projectId }, data: { name: 'Projet renomme', description: 'Nouvelle description' } });
+    const next = await enqueue('export const value = 1;'); await processNext(queue, store, 'second');
+    const after = (await request(app.getHttpServer()).get(`/api/analyses/${first.id}/report`).expect(200)).body;
+    expect(after).toEqual(before); expect(after.project.name).toBe('Version initiale');
+    const newer = (await request(app.getHttpServer()).get(`/api/analyses/${next.id}/report`).expect(200)).body;
+    expect(newer.project.name).toBe('Projet renomme'); expect(newer.report.issues).toEqual([]);
+    const detail = (await request(app.getHttpServer()).get(`/api/analyses/${first.id}`).expect(200)).body;
+    expect(detail.projectSnapshot).toEqual(after.project);
+    expect(detail.statistics.errorCount).toBe(after.report.statistics.errorCount);
+    expect((await request(app.getHttpServer()).get(`/api/analyses/${first.id}/results`).expect(200)).body).toEqual(after.report);
+    const history = (await request(app.getHttpServer()).get(`/api/projects/${projectId}/analyses`).expect(200)).body.items;
+    expect(history.map((item: { id: string }) => item.id)).toEqual([next.id, first.id]);
+    expect(history[1].startedAt).toBe(after.analysis.startedAt); expect(history[1].finishedAt).toBe(after.analysis.finishedAt);
+  });
+
+  it('utilise les versions du moteur et du profil enregistrees plutot que les versions actuelles', async () => {
+    const queued = await enqueue(); await processNext(queue, store, 'old-engine');
+    const stored = await client.analysis.findUniqueOrThrow({ where: { id: queued.id } });
+    const report = stored.report as unknown as Report;
+    report.profile.version = 'historical-profile-v0';
+    report.profile.engines = { eslint: '1.0.0', typescript: '2.0.0', typescriptEslint: '3.0.0' };
+    await client.analysis.update({ where: { id: queued.id }, data: { report: JSON.parse(JSON.stringify(report)), profileVersion: report.profile.version } });
+    const exported = (await request(app.getHttpServer()).get(`/api/analyses/${queued.id}/report`).expect(200)).body;
+    expect(exported.report).toEqual(report); expect(exported.analysis.profileVersion).toBe('historical-profile-v0');
+  });
+
+  it('retourne les erreurs attendues sans piece jointe pour les analyses absentes, actives ou echouees', async () => {
+    await request(app.getHttpServer()).get(`/api/analyses/${randomUUID()}/report`).expect(404);
+    await request(app.getHttpServer()).get('/api/analyses/invalid/report').expect(400);
+    const queued = await enqueue();
+    const waiting = await request(app.getHttpServer()).get(`/api/analyses/${queued.id}/report`).expect(409);
+    expect(waiting.body.code).toBe('ANALYSIS_NOT_FINISHED'); expect(waiting.headers['content-disposition']).toBeUndefined();
+    const claim = (await queue.claim('a'))!;
+    expect((await request(app.getHttpServer()).get(`/api/analyses/${queued.id}/report`).expect(409)).body.code).toBe('ANALYSIS_NOT_FINISHED');
+    await queue.fail(claim, 'TEST_FAILURE', 'Echec technique');
+    expect((await request(app.getHttpServer()).get(`/api/analyses/${queued.id}/report`).expect(409)).body.code).toBe('ANALYSIS_FAILED');
+  });
+
+  it('signale les metadonnees incompletes au lieu de reconstruire le projet actuel', async () => {
+    const queued = await enqueue(); await processNext(queue, store, 'a');
+    await client.$executeRaw`UPDATE "Analysis" SET "projectSnapshot" = NULL WHERE "id" = ${queued.id}::uuid`;
+    expect((await request(app.getHttpServer()).get(`/api/analyses/${queued.id}/report`).expect(409)).body.code).toBe('REPORT_UNAVAILABLE');
+  });
+
+  it.each(['version', 'position', 'statistic', 'engine'])('rejette un rapport non conforme (%s) sans le corriger', async (kind) => {
+    const queued = await enqueue(); await processNext(queue, store, 'a');
+    const stored = await client.analysis.findUniqueOrThrow({ where: { id: queued.id } });
+    const report = stored.report as unknown as Record<string, unknown>;
+    if (kind === 'version') report.schemaVersion = 2;
+    if (kind === 'position') (report.issues as Record<string, unknown>[])[0]!.line = 0;
+    if (kind === 'statistic') (report.statistics as Record<string, unknown>).errorCount = '1';
+    if (kind === 'engine') delete ((report.profile as Record<string, unknown>).engines as Record<string, unknown>).eslint;
+    await client.analysis.update({ where: { id: queued.id }, data: { report: JSON.parse(JSON.stringify(report)) } });
+    expect((await request(app.getHttpServer()).get(`/api/analyses/${queued.id}/report`).expect(409)).body.code).toBe('REPORT_SCHEMA_INVALID');
+    expect((await client.analysis.findUniqueOrThrow({ where: { id: queued.id } })).report).toEqual(report);
+  });
+
+  it('refuse des statistiques de synthese divergentes des resultats affiches', async () => {
+    const queued = await enqueue(); await processNext(queue, store, 'a');
+    await client.analysis.update({ where: { id: queued.id }, data: { statistics: { errorCount: 500 } } });
+    expect((await request(app.getHttpServer()).get(`/api/analyses/${queued.id}/report`).expect(409)).body.code).toBe('REPORT_INCONSISTENT');
+  });
+
+  it('reprend explicitement les donnees historiques sans inventer leur date de capture originale', async () => {
+    const legacy = await client.analysis.create({ data: { projectId } });
+    const sql = await readFile(resolve(workspace, 'packages/database/prisma/migrations/20261030000300_project_snapshots/migration.sql'), 'utf8');
+    const backfill = sql.slice(sql.indexOf('UPDATE "Analysis"'));
+    await expect(client.$transaction(async (transaction) => {
+      await transaction.$executeRawUnsafe(backfill);
+      const restored = await transaction.analysis.findUniqueOrThrow({ where: { id: legacy.id } });
+      expect(restored.projectSnapshot).toMatchObject({ id: projectId, origin: 'MIGRATION_BACKFILL' });
+      expect((restored.projectSnapshot as { capturedAt: string }).capturedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      throw new Error('ROLLBACK_BACKFILL_TEST');
+    })).rejects.toThrow('ROLLBACK_BACKFILL_TEST');
+    expect((await client.analysis.findUniqueOrThrow({ where: { id: legacy.id } })).projectSnapshot).toBeNull();
   });
 
   it('calcule les indicateurs globaux depuis les données persistées et exclut les échecs des diagnostics', async () => {

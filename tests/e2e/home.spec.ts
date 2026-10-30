@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { zip } from '../../packages/analysis-jobs/test/zip-builder';
 
@@ -78,6 +79,18 @@ test('consulte un véritable rapport depuis le tableau de bord, filtre et pagine
     await page.getByLabel('Règle ESLint', { exact: true }).selectOption('no-console');
     await expect(page.locator('tbody tr')).toHaveCount(1);
     await expect(page.locator('tbody')).toContainText('src/index.js');
+    const downloaded = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Exporter le rapport JSON' }).click();
+    const file = await downloaded;
+    expect(file.suggestedFilename()).toBe(`codeaudit-analysis-${id}.json`);
+    const exported = JSON.parse(await readFile((await file.path())!, 'utf8')) as {
+      project: { name: string }; report: { issues: { severity: string; message: string }[]; statistics: { errorCount: number; warningCount: number } };
+    };
+    expect(exported).toEqual(await (await request.get(`${apiUrl}/api/analyses/${id}/report`)).json());
+    expect(exported.project.name).toBe(name); expect(exported.report.issues).toHaveLength(26);
+    await expect(page.locator('tbody')).toContainText(exported.report.issues.find((item) => item.severity === 'warning')!.message);
+    await expect(page.locator('dt').filter({ hasText: /^Erreurs$/ }).locator('..').locator('dd')).toHaveText(String(exported.report.statistics.errorCount));
+    await expect(page.locator('dt').filter({ hasText: /^Avertissements$/ }).locator('..').locator('dd')).toHaveText(String(exported.report.statistics.warningCount));
     await page.getByLabel('Nom de fichier').fill('absent.ts');
     await expect(page.getByText('Aucun problème ne correspond aux filtres.', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Réinitialiser les filtres' }).click();
@@ -89,6 +102,14 @@ test('consulte un véritable rapport depuis le tableau de bord, filtre et pagine
     await page.getByRole('link', { name: 'Voir le projet et son historique' }).click();
     await expect(page.getByRole('heading', { name: 'Historique des analyses' })).toBeVisible();
     await expect(page.locator(`a[href="/analyses/${id}"]`)).toBeVisible();
+    const next = await request.post(`${apiUrl}/api/projects/${projectId}/analyses`, { multipart: { archive: { name: 'clean.zip', mimeType: 'application/zip', buffer: zip([{ name: 'clean.js', data: 'export const value = 1;' }]) } } });
+    expect(next.status()).toBe(202); const nextId = (await next.json() as { id: string }).id;
+    await expect.poll(async () => (await (await request.get(`${apiUrl}/api/analyses/${nextId}`)).json() as { status: string }).status, { timeout: 20000 }).toBe('SUCCEEDED');
+    await page.getByRole('button', { name: 'Actualiser l’historique' }).click();
+    await expect(page.locator(`a[href="/analyses/${nextId}"]`)).toBeVisible();
+    await page.locator(`a[href="/analyses/${id}"]`).click();
+    await expect(page.locator('dt').filter({ hasText: /^Erreurs$/ }).locator('..').locator('dd')).toHaveText('25');
+    expect(await (await request.get(`${apiUrl}/api/analyses/${id}/report`)).json()).toEqual(exported);
   } finally {
     if (worker.exitCode === null && worker.signalCode === null) {
       const exited = once(worker, 'exit', { signal: AbortSignal.timeout(5000) });

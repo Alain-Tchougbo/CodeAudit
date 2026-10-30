@@ -6,6 +6,7 @@ import AnalysisStatus from '../components/AnalysisStatus.vue';
 import IssuesTable from '../components/IssuesTable.vue';
 import MetricCard from '../components/MetricCard.vue';
 import ResourceState from '../components/ResourceState.vue';
+import ReportExport from '../components/ReportExport.vue';
 import { date, duration, number } from '../format';
 const route = useRoute();
 const { data, loading, error, reload, now } = useAnalysisDetail(() => String(route.params.id));
@@ -39,6 +40,21 @@ const elapsed = computed(() => {
       @retry="reload"
     />
     <template v-if="data && !error">
+      <section
+        v-if="data.analysis.projectSnapshot"
+        class="panel mb-6"
+        aria-label="Projet au moment de l’analyse"
+      >
+        <h2 class="font-semibold">
+          {{ data.analysis.projectSnapshot.name }}
+        </h2>
+        <p class="mt-2 whitespace-pre-wrap break-words text-sm text-slate-600">
+          {{ data.analysis.projectSnapshot.description || 'Aucune description.' }}
+        </p>
+        <p class="mt-3 text-xs text-slate-500">
+          {{ data.analysis.projectSnapshot.origin === 'MIGRATION_BACKFILL' ? 'Informations du projet reprises lors de la migration historique.' : 'Informations du projet figées à la demande de cette analyse.' }}
+        </p>
+      </section>
       <div class="panel mb-6">
         <div class="flex flex-wrap items-center justify-between gap-4">
           <AnalysisStatus :status="data.analysis.status" /><RouterLink
@@ -77,6 +93,11 @@ const elapsed = computed(() => {
           Traitement terminé le {{ date(data.analysis.finishedAt) }}.
         </p>
       </div>
+      <ReportExport
+        :key="data.analysis.id"
+        :analysis-id="data.analysis.id"
+        :status="data.analysis.status"
+      />
       <p
         v-if="data.analysis.status === 'QUEUED' || data.analysis.status === 'RUNNING'"
         role="status"

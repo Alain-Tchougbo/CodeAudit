@@ -16,7 +16,8 @@ defineProps<{ analyses: (AnalysisSummary & { projectName?: string })[] }>();
       >
         <div class="min-w-0 flex-1">
           <p class="break-words font-semibold text-slate-900 group-hover:text-indigo-700">{{ analysis.projectName || 'Analyse du projet' }}</p>
-          <p class="mt-1 text-sm text-slate-500">{{ date(analysis.createdAt) }} <span v-if="analysis.startedAt && analysis.finishedAt">· {{ duration(Date.parse(analysis.finishedAt) - Date.parse(analysis.startedAt)) }}</span></p>
+          <p class="mt-1 text-sm text-slate-500">{{ date(analysis.createdAt) }} · Durée : {{ analysis.startedAt && analysis.finishedAt ? duration(Date.parse(analysis.finishedAt) - Date.parse(analysis.startedAt)) : '—' }}</p>
+          <p class="mt-2 font-mono text-xs text-slate-500">{{ analysis.id.slice(0, 8) }}</p>
           <p
             v-if="analysis.statistics"
             class="mt-2 text-sm text-slate-600"

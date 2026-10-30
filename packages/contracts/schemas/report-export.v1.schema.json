@@ -1,0 +1,524 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CodeAudit report export v1",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "project": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "capturedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "origin": {
+          "enum": [
+            "ANALYSIS_REQUEST",
+            "MIGRATION_BACKFILL"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "createdAt",
+        "updatedAt",
+        "capturedAt",
+        "origin"
+      ],
+      "additionalProperties": false
+    },
+    "analysis": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "projectId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "const": "SUCCEEDED"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finishedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "profileVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "error": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "status",
+        "createdAt",
+        "startedAt",
+        "finishedAt",
+        "durationMs",
+        "profileVersion",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "report": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "profile": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "engines": {
+              "type": "object",
+              "properties": {
+                "eslint": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "typescript": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "typescriptEslint": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "eslint",
+                "typescript",
+                "typescriptEslint"
+              ],
+              "additionalProperties": false
+            },
+            "ecmaVersion": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sourceTypes": {
+              "type": "object",
+              "properties": {
+                "module": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "commonjs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "module",
+                "commonjs"
+              ],
+              "additionalProperties": false
+            },
+            "supportedExtensions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ignoredDirectories": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "globals": {
+              "type": "object",
+              "additionalProperties": {
+                "const": "readonly"
+              }
+            },
+            "rules": {
+              "type": "object",
+              "properties": {
+                "javascript": {
+                  "type": "object"
+                },
+                "typescript": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "javascript",
+                "typescript"
+              ],
+              "additionalProperties": false
+            },
+            "allowInlineConfig": {
+              "const": false
+            },
+            "fix": {
+              "const": false
+            },
+            "typeInformation": {
+              "const": false
+            }
+          },
+          "required": [
+            "version",
+            "engines",
+            "ecmaVersion",
+            "sourceTypes",
+            "supportedExtensions",
+            "ignoredDirectories",
+            "globals",
+            "rules",
+            "allowInlineConfig",
+            "fix",
+            "typeInformation"
+          ],
+          "additionalProperties": false
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "maxEntries": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "maxFileBytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "maxTotalBytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "maxDurationMs": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "maxEntries",
+            "maxFileBytes",
+            "maxTotalBytes",
+            "maxDurationMs"
+          ],
+          "additionalProperties": false
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "statistics": {
+          "type": "object",
+          "properties": {
+            "discoveredFileCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "supportedFileCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "analyzedFileCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "affectedFileCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ignoredEntryCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ignoredFileCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ignoredDirectoryCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "errorCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "warningCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "issueCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "syntaxErrorCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "bytesRead": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "durationMs": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "discoveredFileCount",
+            "supportedFileCount",
+            "analyzedFileCount",
+            "affectedFileCount",
+            "ignoredEntryCount",
+            "ignoredFileCount",
+            "ignoredDirectoryCount",
+            "errorCount",
+            "warningCount",
+            "issueCount",
+            "syntaxErrorCount",
+            "bytesRead",
+            "durationMs"
+          ],
+          "additionalProperties": false
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "filePath": {
+                "type": "string",
+                "minLength": 1
+              },
+              "severity": {
+                "enum": [
+                  "error",
+                  "warning"
+                ]
+              },
+              "ruleId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "line": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "endLine": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "endColumn": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "kind": {
+                "enum": [
+                  "lint",
+                  "syntax"
+                ]
+              }
+            },
+            "required": [
+              "filePath",
+              "severity",
+              "ruleId",
+              "message",
+              "line",
+              "column",
+              "endLine",
+              "endColumn",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "filePath": {
+                "type": "string",
+                "minLength": 1
+              },
+              "errorCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "warningCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "syntaxErrorCount": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "filePath",
+              "errorCount",
+              "warningCount",
+              "syntaxErrorCount"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "ignoredEntries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "filePath": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "file",
+                  "directory",
+                  "symlink",
+                  "other"
+                ]
+              },
+              "reason": {
+                "enum": [
+                  "excluded-directory",
+                  "unsupported-extension",
+                  "symbolic-link",
+                  "binary",
+                  "invalid-encoding",
+                  "not-regular-file"
+                ]
+              }
+            },
+            "required": [
+              "filePath",
+              "kind",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "profile",
+        "limits",
+        "startedAt",
+        "completedAt",
+        "statistics",
+        "issues",
+        "files",
+        "ignoredEntries"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "project",
+    "analysis",
+    "report"
+  ],
+  "additionalProperties": false
+}

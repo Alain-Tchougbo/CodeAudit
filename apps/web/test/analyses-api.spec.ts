@@ -2,6 +2,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { analysesApi } from '../src/api/analyses';
 afterEach(() => vi.unstubAllGlobals());
 describe('Client HTTP analyses', () => {
+  it('recupere le fichier JSON brut depuis le veritable endpoint export', async () => {
+    const content = '{ "schemaVersion": 1, "report": { "issues": [] } }';
+    const fetch = vi.fn().mockResolvedValue(new Response(content, { headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetch); const signal = new AbortController().signal;
+    const blob = await analysesApi.export('a/b', signal);
+    const text = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error);
+      reader.readAsText(blob);
+    });
+    expect(text).toBe(content);
+    expect(fetch).toHaveBeenCalledWith('/api/analyses/a%2Fb/report', { signal });
+  });
   it('utilise les endpoints réels et transmet les signaux et curseurs', async () => {
     const fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response('{}'))); vi.stubGlobal('fetch', fetch);
     const signal = new AbortController().signal;
