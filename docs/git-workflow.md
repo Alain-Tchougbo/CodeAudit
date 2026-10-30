@@ -40,7 +40,7 @@ Ne pas regrouper des fonctionnalités indépendantes dans une seule PR.
 La CI complète doit réussir avant fusion, y compris les tests PostgreSQL et
 Playwright. `pr-policy` vérifie la destination de la PR. Les branches `main`
 et `staging` exigent ces contrôles et une PR, y compris pour les administrateurs.
-La branche doit être à jour avec sa cible. Aucun avis externe n'est obligatoire
+Les branches de tâches doivent être à jour avec `staging`. Aucun avis externe n'est obligatoire
 dans ce MVP mono-utilisateur ; relire néanmoins le diff et les résultats avant fusion.
 
 Si `staging` a évolué pendant le développement, fusionner `origin/staging` dans
@@ -74,6 +74,11 @@ Utiliser un **merge commit** pour cette PR, afin que les commits de `staging`
 restent dans l'historique de `main` et ne réapparaissent pas dans les livraisons
 suivantes. Ne pas supprimer `staging`, ne pas la réinitialiser et ne pas pousser
 directement sur `main`. La prochaine tâche repart de `staging` à jour.
+
+La protection de `main` exige les contrôles de la PR, sans imposer à `staging`
+d'intégrer les merge commits des livraisons précédentes. La CI de la PR vérifie
+le résultat combiné avec `main`. Cela permet les livraisons successives sans
+branche de synchronisation ni réécriture d'historique.
 
 Un correctif urgent suit aussi `fix/... → staging → main` ; aucun contournement
 des protections ni antidatage n'est prévu par ce workflow.
