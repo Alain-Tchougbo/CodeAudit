@@ -116,15 +116,16 @@ Si toutes les sources sont ignorées ou non prises en charge, NO_SUPPORTED_FILES
 est renvoyé.
 
 La durée et AbortSignal sont vérifiés entre les opérations ; ils n'interrompent
-pas un parsing ESLint synchrone en cours. Le worker devra imposer un délai et une
-limite mémoire dans un processus isolé. Le moteur ne garantit pas à lui seul un
+pas un parsing ESLint synchrone en cours. Le worker impose maintenant un délai
+avec terminaison effective d'un worker_thread et des limites V8. Le moteur ne garantit pas à lui seul un
 plafond mémoire global ou une isolation face aux modifications concurrentes du disque.
 
 Pas de vérification sémantique TypeScript, de résolution des imports, de règles de
 framework, d'analyse de sécurité exhaustive, de détection de secrets ou de dépendances
 vulnérables. Certaines constructions récentes hors ECMAScript 2024 peuvent être
 signalées comme syntaxe invalide. Un résultat sans problème ne certifie pas la qualité
-ou l'absence de défauts. Le package n'est pas encore branché au worker ou à l'API.
+ou l'absence de défauts. Le package est branché au worker ; l'API importe et met
+en file les demandes. Les règles ne certifient pas une application sûre en production.
 
 ## Vérification
 

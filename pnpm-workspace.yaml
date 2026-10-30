@@ -8,3 +8,6 @@ allowBuilds:
   '@parcel/watcher': true
   unrs-resolver: true
 workspaceConcurrency: 1
+overrides:
+  # GHSA-q7qp-rjg7-q26m: keep Nest 11 while using the patched multipart parser.
+  '@nestjs/platform-express>multer': 2.5.0

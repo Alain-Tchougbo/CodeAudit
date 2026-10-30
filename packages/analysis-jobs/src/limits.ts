@@ -1,5 +1,7 @@
+import { ANALYSIS_ARCHIVE_MAX_BYTES } from '@codeaudit/contracts';
+
 export const IMPORT_LIMITS = Object.freeze({
-  archiveBytes: 10 * 1024 * 1024,
+  archiveBytes: ANALYSIS_ARCHIVE_MAX_BYTES,
   entries: 2000,
   fileBytes: 5 * 1024 * 1024,
   expandedBytes: 50 * 1024 * 1024,

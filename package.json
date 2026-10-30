@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "pnpm build:packages && pnpm --parallel --filter \"./apps/*\" dev",
-    "lint": "eslint . --max-warnings 0",
+    "lint": "eslint --config eslint.config.mjs . --max-warnings 0",
     "typecheck": "pnpm build:packages && pnpm typecheck:tools && pnpm -r typecheck",
     "build": "pnpm -r build",
     "test": "pnpm -r --if-present test",

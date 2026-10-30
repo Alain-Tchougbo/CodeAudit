@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { connect, createServer, type AddressInfo, type Socket } from 'node:net';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -111,10 +112,10 @@ describe('Exécution des analyses — PostgreSQL réel', () => {
     throw new Error('État attendu non atteint dans le délai.');
   }
 
-  function launchWorker(): ChildProcess {
+  function launchWorker(databaseUrl = testUrl!): ChildProcess {
     const child = spawn(process.execPath, [resolve(workspace, 'apps/worker/dist/index.js')], {
       cwd: workspace, windowsHide: true, stdio: 'ignore',
-      env: { ...process.env, DATABASE_URL: testUrl!, CODEAUDIT_STORAGE_ROOT: storageRoot },
+      env: { ...process.env, DATABASE_URL: databaseUrl, CODEAUDIT_STORAGE_ROOT: storageRoot },
     });
     child.on('error', () => {});
     children.push(child);
@@ -405,6 +406,34 @@ describe('Exécution des analyses — PostgreSQL réel', () => {
     expect(await queue.heartbeat(abandoned.id, running.lockToken!)).toBe(false);
     await stopChild(replacement);
     expect(await readdir(storageRoot)).toEqual([]);
+  });
+
+  it('reste disponible quand PostgreSQL est absent au demarrage puis traite un travail apres reconnexion', async () => {
+    const probe = createServer();
+    await new Promise<void>((done) => probe.listen(0, '127.0.0.1', done));
+    const port = (probe.address() as AddressInfo).port;
+    await new Promise<void>((done, reject) => probe.close((error) => error ? reject(error) : done()));
+    const target = new URL(testUrl!);
+    const proxyUrl = new URL(testUrl!); proxyUrl.hostname = '127.0.0.1'; proxyUrl.port = String(port);
+    const sockets = new Set<Socket>();
+    const proxy = createServer((incoming) => {
+      const outgoing = connect({ host: target.hostname, port: Number(target.port || 5432) });
+      sockets.add(incoming); sockets.add(outgoing);
+      incoming.on('error', () => outgoing.destroy()); outgoing.on('error', () => incoming.destroy());
+      incoming.on('close', () => { sockets.delete(incoming); outgoing.destroy(); });
+      outgoing.on('close', () => { sockets.delete(outgoing); incoming.destroy(); });
+      incoming.pipe(outgoing); outgoing.pipe(incoming);
+    });
+    const worker = launchWorker(proxyUrl.toString());
+    try {
+      await delay(1500); expect(worker.exitCode).toBeNull(); expect(worker.signalCode).toBeNull();
+      await new Promise<void>((done, reject) => { proxy.once('error', reject); proxy.listen(port, '127.0.0.1', done); });
+      const queued = await enqueue('export const recovered = 1;');
+      await waitFor(() => client.analysis.findUniqueOrThrow({ where: { id: queued.id } }), (item) => item.status === 'SUCCEEDED' && item.sourceKey === null);
+    } finally {
+      await stopChild(worker); for (const socket of sockets) socket.destroy();
+      if (proxy.listening) await new Promise<void>((done) => proxy.close(() => done()));
+    }
   });
 
   it('retente le nettoyage sans modifier les résultats terminaux', async () => {

@@ -2,6 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { analysesApi } from '../src/api/analyses';
 afterEach(() => vi.unstubAllGlobals());
 describe('Client HTTP analyses', () => {
+  it('envoie une archive multipart sans imposer un Content-Type JSON', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response('{"id":"queued"}', { status: 202 })); vi.stubGlobal('fetch', fetch);
+    const file = new File(['ZIP'], 'project.zip', { type: 'application/zip' });
+    expect(await analysesApi.create('p/q', file)).toEqual({ id: 'queued' });
+    const [path, options] = fetch.mock.calls[0]!; expect(path).toBe('/api/projects/p%2Fq/analyses');
+    expect(options.method).toBe('POST'); expect(options.body.get('archive')).toEqual(file); expect(options.headers).toBeUndefined();
+  });
   it('recupere le fichier JSON brut depuis le veritable endpoint export', async () => {
     const content = '{ "schemaVersion": 1, "report": { "issues": [] } }';
     const fetch = vi.fn().mockResolvedValue(new Response(content, { headers: { 'Content-Type': 'application/json' } }));

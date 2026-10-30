@@ -2,7 +2,7 @@
 
 Statut : projets, moteur, import ZIP, file PostgreSQL et worker disponibles.
 Le tableau de bord, le suivi et les filtres de diagnostics sont disponibles.
-Le formulaire de lancement ZIP reste à réaliser.
+Le formulaire de lancement ZIP est disponible dans la fiche projet.
 
 ## Objectif et périmètre
 

@@ -5,6 +5,7 @@ export interface HealthResponse {
 
 export const PROJECT_NAME_MAX_LENGTH = 120;
 export const PROJECT_DESCRIPTION_MAX_LENGTH = 2000;
+export const ANALYSIS_ARCHIVE_MAX_BYTES = 10 * 1024 * 1024;
 
 export interface Project {
   id: string;

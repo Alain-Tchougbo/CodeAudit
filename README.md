@@ -16,8 +16,7 @@ Prérequis : Node.js 24.15+ dans la branche 24, pnpm 12.3.4, Docker avec Compose
 
 ```powershell
 pnpm install --frozen-lockfile
-# Seulement si .env n'existe pas :
-Copy-Item .env.example .env
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
 pnpm db:up
 pnpm db:migrate
 pnpm dev
@@ -28,16 +27,61 @@ et le port de DATABASE_URL ensemble avant de démarrer la base.
 Compose, Prisma CLI et le client de l'API lisent .env à la racine ;
 les variables du terminal sont prioritaires.
 Les identifiants fournis sont destinés au poste local uniquement.
+Docker Compose fournit PostgreSQL ; API, frontend et worker sont lancés localement
+par `pnpm dev`. Le volume PostgreSQL conserve les données entre les arrêts.
 
 Frontend : http://127.0.0.1:5173/ (tableau de bord), puis /projects.
 API : http://127.0.0.1:3000/api/projects ; santé du processus : /health.
-Vite transmet /api/projects à l'API et /api/health à /health.
+Vite transmet /api à l'API et /api/health à /health.
 PORT, WEB_PORT et API_PROXY_TARGET peuvent être définis dans le terminal pour
 utiliser d'autres ports. Ils ne sont pas chargés implicitement depuis .env par Vite.
 
 pnpm dev génère le client Prisma et compile les packages partagés avant les serveurs.
 Après modification d'un package partagé, relancer pnpm build:packages.
 pnpm db:down arrête PostgreSQL en conservant son volume.
+
+### Configuration
+
+| Variable | Valeur par défaut / usage |
+| --- | --- |
+| POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB | codeaudit ; développement local, dans .env |
+| POSTGRES_PORT | 5432 ; port hôte Docker à faire correspondre à DATABASE_URL |
+| DATABASE_URL | URL PostgreSQL de .env ; une variable du terminal est prioritaire |
+| PORT | API : 3000, à définir dans le terminal pour la changer |
+| WEB_PORT | Vue/Vite : 5173, à définir dans le terminal |
+| API_PROXY_TARGET | http://127.0.0.1:3000 ; même port que PORT |
+| CODEAUDIT_STORAGE_ROOT | .tmp/imports ; répertoire dédié partagé par API et worker, même valeur dans les deux processus |
+| TEST_DATABASE_URL | Base migrée distincte, nom terminé par _test, obligatoire pour intégration/E2E |
+| E2E_API_PORT, E2E_WEB_PORT | 3100 et 5175 ; ports réservés aux serveurs Playwright |
+
+Les services écoutent sur l'interface locale. `/health` vérifie seulement que l'API
+répond ; utiliser `pnpm db:check` pour vérifier PostgreSQL et ses migrations.
+Si une analyse reste en attente, vérifier la console du worker et sa connexion à
+la même base et au même stockage. Un worker réessaie lorsque la base est indisponible.
+
+### Parcours de démonstration
+
+1. Ouvrir `/projects`, ajouter un projet et remplir le formulaire.
+2. Dans sa fiche, sélectionner une archive via « Archive ZIP du projet ».
+3. Cliquer sur « Lancer l’analyse » ; le navigateur ouvre le suivi.
+4. Suivre En attente / En cours / Terminée, actualisés automatiquement.
+5. Consulter les fichiers, positions, règles, gravités et messages.
+6. Combiner les filtres par gravité, nom de fichier et règle ; naviguer entre les pages.
+7. Revenir au projet, consulter l'historique et rouvrir une ancienne analyse.
+8. Télécharger « Exporter le rapport JSON » depuis une analyse réussie.
+
+Pour préparer un petit ZIP depuis PowerShell, créer un dossier contenant un fichier
+`index.js` avec `missing;` et `console.log('demo');`, puis utiliser
+`Compress-Archive -Path chemin/du/dossier/* -DestinationPath demo.zip`.
+Ces sources sont analysées comme du texte ; leurs scripts et dépendances ne sont
+jamais exécutés ni installés. Une nouvelle analyse exige un nouvel import.
+Préparer de préférence un ZIP des sources sans node_modules, .git, dist, build ou
+coverage : ces répertoires ignorés par le moteur comptent néanmoins dans les limites d'import.
+
+Limites : ZIP 10 Mio, 2 000 entrées et nœuds extraits, fichier 5 Mio, total extrait
+50 Mio, extraction/analyse 60 secondes chacune et rapport 10 Mio. Un diagnostic
+de code donne SUCCEEDED ; FAILED indique un échec technique. Une réservation
+abandonnée n'est pas relancée avec le même identifiant.
 
 ## Gestion des projets
 
@@ -93,12 +137,16 @@ Le package database fournit Prisma Client 7 et l'adaptateur PostgreSQL.
 Le code généré est ignoré par Git ; son build le régénère automatiquement.
 Les contrats publics proposent des exports ESM pour Vite et CommonJS pour NestJS.
 Les tâches pnpm des workspaces sont séquentielles pour limiter la consommation mémoire.
+Le lint racine impose la configuration du dépôt et exclut `.tmp`, afin que les
+sources importées et leurs éventuelles configurations restent hors de ces vérifications.
 
 ## Vérifications sans base de tests
 
 ```powershell
 pnpm check
 pnpm -r --if-present lint
+pnpm audit --prod
+pnpm audit
 ```
 
 check lance lint, typage (incluant Playwright), builds, tests unitaires/frontend
@@ -133,6 +181,15 @@ Playwright démarre son API et Vite, sans réutiliser un serveur existant.
 Ports E2E par défaut : API 3100, frontend 5175 ; surcharge par E2E_API_PORT et
 E2E_WEB_PORT. TEST_DATABASE_URL doit être défini dans le terminal.
 Le parcours navigateur réalise le CRUD complet via HTTP, sans intercepter les données.
+Le scénario `tests/e2e/demo.spec.ts` réalise aussi les huit étapes ci-dessus depuis
+Vue, avec un vrai ZIP, PostgreSQL et le worker. Il observe la file avant de lancer
+son worker de test. Les scénarios sont séquentiels pour éviter qu'un autre worker
+ne consomme ce travail avant l'observation de son état.
+
+Le stockage E2E est isolé dans `.tmp/playwright-imports` ; les serveurs et workers
+de test utilisent ce répertoire au lieu des sources de développement.
+Playwright produit `playwright-report/` et conserve une trace des échecs. Pour lire
+le rapport : `pnpm exec playwright show-report`. Seul Chromium est testé ici.
 
 ## CI et documentation
 
@@ -142,11 +199,37 @@ Workflow Git : une branche par tâche, PR vers `staging`, puis PR de livraison
 GitHub Actions installe le lockfile, vérifie le code, démarre une base dédiée,
 applique les migrations et exécute les tests d'intégration et navigateur.
 L'arrêt PostgreSQL est prévu même après un échec.
+La CI vérifie aussi les dépendances d'exécution et conserve les résultats
+Playwright pendant sept jours. Les contrôles `check` et `pr-policy` sont requis
+pour fusionner vers staging. Les actions sont validables avec actionlint.
+
+## Limites avant un usage en production
+
+Ce MVP est destiné à une démonstration locale mono-utilisateur. Les contrôles V8
+et les threads ne fournissent ni plafond RSS global, ni sandbox système, ni
+interdiction réseau. Les limites sont par import/analyse, sans quota global de
+stockage ou de file. Aucun audit des ACL Windows, test de charge prolongé,
+test de restauration de sauvegarde, audit d'image système ou pentest n'est réalisé.
+L'authentification, le déploiement public et la supervision de production restent
+à concevoir avant toute exposition réseau.
+
+Le profil ESLint est maîtrisé et versionné, sans informations de types, résolution
+des imports ni règles de framework ; il ne certifie pas l'absence de failles.
+Les dates, versions et diagnostics exportés sont ceux persistés, avec la provenance
+des instantanés historiques. Voir les limites détaillées du moteur et de l'exécution.
+
+Au contrôle du 31 octobre 2026, l'audit d'exécution ne signale plus d'alerte après
+correction de Multer. L'audit complet signale encore une alerte faible sur deepmerge
+4.3.1, dépendance de développement de Jest, sans correctif publié dans
+[l'avis amont](https://github.com/advisories/GHSA-gcqx-w48m-w2h4).
+Cette dépendance sert aux configurations de test maîtrisées, jamais aux projets
+ZIP importés. Refaire les audits avant une livraison ; leur résultat évolue.
 
 - [Spécification du MVP](docs/specification.md)
 - [Module projets et validation](docs/projects.md)
 - [Import ZIP et exécution des analyses](docs/analyses.md)
 - [Moteur analyzer, règles et résultats des fixtures](packages/analyzer/README.md)
 - [Audit initial du socle](docs/verification.md)
+- [Journal des expérimentations avec Codex](docs/experiment-log.md)
 
 Licence MIT, voir LICENSE.

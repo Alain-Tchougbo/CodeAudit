@@ -37,7 +37,7 @@ describe('Archives ZIP', () => {
   });
 
   it.each(['../escape.js', '/escape.js', 'C:/escape.js', 'dir/../../escape.js', 'dir\\escape.js', 'dir/./escape.js',
-    'NUL.js', 'con/file.js', 'file.js ', 'file.js.', 'dir//file.js'])('refuse le chemin %s et nettoie le stockage', async (name) => {
+    'NUL.js', 'con/file.js', 'COM¹.js', 'LPT²/file.js', 'CONIN$', 'CONOUT$.js', 'CLOCK$', 'file.js ', 'file.js.', 'dir//file.js'])('refuse le chemin %s et nettoie le stockage', async (name) => {
     const storage = await store();
     await expect(prepareSources(storage, zip([{ name, data: 'debugger;' }]))).rejects.toMatchObject({ code: expect.stringMatching(/^ZIP_(PATH_INVALID|CORRUPT)$/) });
     expect(await readdir(storage.root)).toEqual([]);
