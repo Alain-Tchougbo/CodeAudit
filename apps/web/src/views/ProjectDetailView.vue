@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { projectsApi } from '../api/projects';
 import { useResource } from '../composables/useResource';
 import ProjectAnalyses from '../components/ProjectAnalyses.vue';
+import AnalysisImport from '../components/AnalysisImport.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -135,6 +136,10 @@ async function remove(): Promise<void> {
       >
         {{ deleteError }}
       </p>
+      <AnalysisImport
+        :key="project.id"
+        :project-id="project.id"
+      />
       <ProjectAnalyses :project-id="project.id" />
     </div>
   </section>

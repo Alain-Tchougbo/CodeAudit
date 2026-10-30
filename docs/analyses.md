@@ -46,7 +46,7 @@ inexistante : 404 ; limite de taille : 413 ; deux extractions déjà en cours da
 une instance API : 429. Le nom et le type MIME fournis ne sont pas considérés
 comme une preuve de validité du ZIP. Les chemins internes et jetons de réservation
 ne sont pas exposés. Le tableau de bord, le suivi, l'historique et les résultats
-sont consultables dans Vue ; le lancement par formulaire ZIP reste à développer.
+sont consultables dans Vue ; le formulaire ZIP de chaque projet lance une demande réelle.
 Voir [les interfaces de consultation](consultation.md).
 
 ## File, concurrence et interruption

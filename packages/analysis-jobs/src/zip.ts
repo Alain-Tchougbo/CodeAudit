@@ -17,7 +17,7 @@ function safeName(entry: Entry): { path: string; directory: boolean } {
   if (!path || path.length > 1024 || segments.length > 32
     || [...path].some((character) => character.charCodeAt(0) < 32) || /[\\:*?"<>|]/.test(path) || path.startsWith('/')
     || segments.some((part) => !part || part === '.' || part === '..' || /[. ]$/.test(part)
-      || part.length > 255 || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(part))) {
+      || part.length > 255 || /^(con|prn|aux|nul|clock\$|conin\$|conout\$|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/i.test(part))) {
     throw new JobError('ZIP_PATH_INVALID', 'Un chemin de l’archive est interdit.');
   }
   const mode = (entry.externalFileAttributes >>> 16) & 0xf000;
@@ -50,7 +50,7 @@ export async function extractZip(buffer: Buffer, destination: string, limits: Zi
       finished = true;
       zip.close();
       if (['ENOSPC', 'EACCES', 'EPERM', 'EROFS', 'EMFILE', 'ENFILE'].includes((error as NodeJS.ErrnoException)?.code ?? '')) {
-        return reject(new JobError('STORAGE_ERROR', 'Temporary storage unavailable.'));
+        return reject(new JobError('STORAGE_ERROR', 'Le stockage temporaire est indisponible.'));
       }
       reject(error instanceof JobError ? error : new JobError('ZIP_CORRUPT', 'Archive ZIP invalide ou tronquée.'));
     };
@@ -75,10 +75,10 @@ export async function extractZip(buffer: Buffer, destination: string, limits: Zi
           const directory = index < segments.length - 1 || name.directory;
           const previous = nodes.get(path.toLowerCase());
           if (previous && (previous.path !== path || previous.directory !== directory)) {
-            throw new JobError('ZIP_DUPLICATE_PATH', 'Conflicting archive paths.');
+            throw new JobError('ZIP_DUPLICATE_PATH', 'L’archive contient des chemins en conflit.');
           }
           nodes.set(path.toLowerCase(), { path, directory });
-          if (nodes.size > limits.entries) throw new JobError('ZIP_ENTRY_LIMIT', 'Too many extracted files and directories.');
+          if (nodes.size > limits.entries) throw new JobError('ZIP_ENTRY_LIMIT', 'Trop de fichiers et répertoires décompressés.');
         }
         if (entry.uncompressedSize > limits.fileBytes) throw new JobError('ZIP_FILE_TOO_LARGE', 'Un fichier décompressé dépasse la limite.');
         if (entry.uncompressedSize > limits.expandedBytes - bytes) throw new JobError('ZIP_EXPANDED_LIMIT', 'Le contenu décompressé dépasse la limite.');

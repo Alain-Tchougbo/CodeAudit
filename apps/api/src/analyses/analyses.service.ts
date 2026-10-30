@@ -52,7 +52,8 @@ export class AnalysesService {
     } catch (error) {
       if (sources && store) await store.remove(sources.key);
       if (error instanceof JobError) {
-        const status = error.code === 'STORAGE_ERROR' ? 500
+        const status = ['STORAGE_ERROR', 'ENGINE_CRASHED', 'MEMORY_LIMIT', 'THREAD_PROTOCOL_ERROR', 'ENGINE_FAILED'].includes(error.code) ? 500
+          : error.code === 'EXTRACTION_TIMEOUT' ? 422
           : ['ZIP_TOO_LARGE', 'ZIP_FILE_TOO_LARGE', 'ZIP_EXPANDED_LIMIT', 'ZIP_ENTRY_LIMIT'].includes(error.code) ? 413 : 400;
         throw new HttpException({ code: error.code, message: error.message }, status);
       }
@@ -69,7 +70,11 @@ export class AnalysesService {
     return analysis;
   }
 
-  async status(id: string): Promise<AnalysisSummary> { return summary(await this.get(id)); }
+  async status(id: string): Promise<AnalysisSummary> {
+    const analysis = await this.database.client.analysis.findUnique({ where: { id }, select: SUMMARY_SELECT });
+    if (!analysis) throw new NotFoundException({ code: 'ANALYSIS_NOT_FOUND', message: 'Analyse introuvable.' });
+    return summary(analysis);
+  }
 
   async history(projectId: string, query: HistoryQuery) {
     if (!await this.database.client.project.findUnique({ where: { id: projectId }, select: { id: true } })) {

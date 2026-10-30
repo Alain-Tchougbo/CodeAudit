@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@codeaudit/contracts": "workspace:*",
     "@codeaudit/analyzer": "workspace:*",
     "@codeaudit/database": "workspace:*",
     "yauzl": "3.4.0"

@@ -12,11 +12,14 @@ async function main(): Promise<void> {
   process.once('SIGINT', () => stop.abort());
   process.once('SIGTERM', () => stop.abort());
   let lastMaintenance = 0;
+  let connected = false;
   try {
-    await client.$connect();
-    console.info(`CodeAudit worker ${workerId} prêt.`);
     while (!stop.signal.aborted) {
       try {
+        if (!connected) {
+          await client.$connect(); connected = true;
+          console.info(`CodeAudit worker ${workerId} prêt.`);
+        }
         if (Date.now() - lastMaintenance >= 5000) {
           const cleanup = await queue.maintenance(store);
           if (cleanup.errors) console.warn(`Worker : ${cleanup.errors} nettoyage(s) a retenter.`);
