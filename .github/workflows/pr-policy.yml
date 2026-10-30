@@ -1,0 +1,35 @@
+name: Pull request policy
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+permissions:
+  contents: read
+jobs:
+  pr-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate pull request destination
+        env:
+          BASE_BRANCH: ${{ github.base_ref }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPOSITORY: ${{ github.repository }}
+        run: |
+          case "$BASE_BRANCH" in
+            main)
+              if [ "$HEAD_BRANCH" != staging ] || [ "$HEAD_REPOSITORY" != "$BASE_REPOSITORY" ]; then
+                echo 'Only staging from this repository can be merged into main.'
+                exit 1
+              fi
+              ;;
+            staging)
+              if [ "$HEAD_BRANCH" = main ] || [ "$HEAD_BRANCH" = staging ]; then
+                echo 'Use a dedicated task branch for pull requests into staging.'
+                exit 1
+              fi
+              ;;
+            *)
+              echo 'Pull requests must target staging, or main for a release.'
+              exit 1
+              ;;
+          esac

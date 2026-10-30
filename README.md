@@ -130,6 +130,9 @@ Le parcours navigateur réalise le CRUD complet via HTTP, sans intercepter les d
 
 ## CI et documentation
 
+Workflow Git : une branche par tâche, PR vers `staging`, puis PR de livraison
+`staging` vers `main`. Voir [les commandes et règles de fusion](docs/git-workflow.md).
+
 GitHub Actions installe le lockfile, vérifie le code, démarre une base dédiée,
 applique les migrations et exécute les tests d'intégration et navigateur.
 L'arrêt PostgreSQL est prévu même après un échec.
