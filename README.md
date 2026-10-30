@@ -70,6 +70,9 @@ Voir [les commandes, limites ZIP et garanties de concurrence](docs/analyses.md).
 Le tableau de bord utilise `GET /api/dashboard` ; chaque projet donne accès à son
 historique et les rapports sont consultables dans `/analyses/:id`.
 Voir [les indicateurs et filtres de consultation](docs/consultation.md).
+L'historique conserve les rapports de chaque analyse. Le bouton d'export du détail
+télécharge le rapport complet et versionné via `GET /api/analyses/:id/report`.
+Voir [le schéma JSON et la conservation historique](docs/report-export.md).
 
 ## Base de données et migrations
 

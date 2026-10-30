@@ -1,12 +1,25 @@
-import { Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { IMPORT_LIMITS } from '@codeaudit/analysis-jobs';
 import { AnalysesService } from './analyses.service';
 import { HistoryQuery } from './history.dto';
+import { ReportExportService } from './report-export.service';
 
 @Controller()
 export class AnalysesController {
-  constructor(private readonly analyses: AnalysesService) {}
+  constructor(private readonly analyses: AnalysesService, private readonly exports: ReportExportService) {}
+
+  @Get('analyses/:id/report')
+  async report(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res({ passthrough: true }) response: { setHeader(name: string, value: string): void },
+  ) {
+    const report = await this.exports.export(id);
+    response.setHeader('Content-Type', 'application/json; charset=utf-8');
+    response.setHeader('Content-Disposition', `attachment; filename="codeaudit-analysis-${id}.json"`);
+    response.setHeader('Cache-Control', 'no-store');
+    return report;
+  }
 
   @Post('projects/:projectId/analyses')
   @HttpCode(202)

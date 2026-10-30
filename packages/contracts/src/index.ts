@@ -42,6 +42,7 @@ export interface AnalysisSummary {
   startedAt: string | null;
   finishedAt: string | null;
   profileVersion: string | null;
+  projectSnapshot?: ProjectSnapshot | null;
   error: { code: string; message: string } | null;
   statistics: {
     analyzedFileCount: number;
@@ -50,6 +51,30 @@ export interface AnalysisSummary {
     warningCount: number;
     syntaxErrorCount: number;
   } | null;
+}
+
+export interface ProjectSnapshot extends Project {
+  capturedAt: string;
+  origin: 'ANALYSIS_REQUEST' | 'MIGRATION_BACKFILL';
+}
+
+export type ReportJson = string | number | boolean | null | ReportJson[] | { [key: string]: ReportJson };
+
+export interface AnalysisExport {
+  schemaVersion: 1;
+  project: ProjectSnapshot;
+  analysis: {
+    id: string;
+    projectId: string;
+    status: 'SUCCEEDED';
+    createdAt: string;
+    startedAt: string;
+    finishedAt: string;
+    durationMs: number;
+    profileVersion: string;
+    error: null;
+  };
+  report: { [key: string]: ReportJson };
 }
 
 export interface AnalysisHistory {

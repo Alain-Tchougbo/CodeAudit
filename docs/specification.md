@@ -109,11 +109,12 @@ Une nouvelle analyse nécessite un nouvel import après suppression des sources.
 Routes disponibles sous /api :
 - POST/GET /projects ; GET/PATCH/DELETE /projects/:id ;
 - POST /projects/:id/analyses (ZIP), GET /projects/:id/analyses ;
-- GET /analyses/:id ; GET /analyses/:id/results (rapport JSON, SUCCEEDED uniquement).
+- GET /analyses/:id ; GET /analyses/:id/results (rapport du moteur, SUCCEEDED uniquement).
+- GET /analyses/:id/report (export JSON versionné avec instantané du projet).
 - GET /dashboard (compteurs réels et dix dernières analyses).
 Les filtres de diagnostics et leur pagination sont disponibles côté navigateur.
-Un endpoint de filtrage/pagination serveur et un endpoint d'export dédié restent
-à développer. Le rapport complet est déjà récupérable en JSON.
+Un endpoint de filtrage/pagination serveur reste à développer. Le rapport complet
+est téléchargeable en JSON ; les instantanés historiques sont décrits dans docs/report-export.md.
 
 GET /health indique que le processus HTTP répond
 et ne garantit pas l'accès à PostgreSQL. Vite transmet /api/health à /health en local.

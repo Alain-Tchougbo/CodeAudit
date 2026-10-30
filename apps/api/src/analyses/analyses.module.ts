@@ -3,6 +3,7 @@ import { DatabaseModule } from '../database/database.module';
 import { AnalysesController } from './analyses.controller';
 import { AnalysesService } from './analyses.service';
 import { DashboardController } from './dashboard.controller';
+import { ReportExportService } from './report-export.service';
 
-@Module({ imports: [DatabaseModule], controllers: [AnalysesController, DashboardController], providers: [AnalysesService] })
+@Module({ imports: [DatabaseModule], controllers: [AnalysesController, DashboardController], providers: [AnalysesService, ReportExportService] })
 export class AnalysesModule {}

@@ -1,6 +1,6 @@
 import type { AnalysisHistory, AnalysisResults, AnalysisSummary, ApiError, Dashboard } from '@codeaudit/contracts';
 
-async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+async function response(path: string, signal?: AbortSignal): Promise<Response> {
   let response: Response;
   try { response = await fetch(`/api${path}`, { signal }); }
   catch (error) {
@@ -12,9 +12,11 @@ async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
     try { body = await response.json() as Partial<ApiError>; } catch { /* Non-JSON error response. */ }
     throw new Error(body.details?.join(' ') || body.message || 'La requête a échoué. Réessayez.');
   }
-  return response.json() as Promise<T>;
+  return response;
 }
+async function get<T>(path: string, signal?: AbortSignal): Promise<T> { return (await response(path, signal)).json() as Promise<T>; }
 export const analysesApi = {
+  export: async (id: string, signal?: AbortSignal) => (await response(`/analyses/${encodeURIComponent(id)}/report`, signal)).blob(),
   dashboard: (signal?: AbortSignal) => get<Dashboard>('/dashboard', signal),
   get: (id: string, signal?: AbortSignal) => get<AnalysisSummary>(`/analyses/${encodeURIComponent(id)}`, signal),
   results: (id: string, signal?: AbortSignal) => get<AnalysisResults>(`/analyses/${encodeURIComponent(id)}/results`, signal),

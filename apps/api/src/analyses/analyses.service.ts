@@ -1,13 +1,13 @@
 import { BadRequestException, ConflictException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type Analysis } from '@codeaudit/database';
 import { AnalysisQueue, JobError, SourceStore, prepareSources } from '@codeaudit/analysis-jobs';
-import type { AnalysisSummary } from '@codeaudit/contracts';
+import type { AnalysisSummary, ProjectSnapshot } from '@codeaudit/contracts';
 import { PrismaService } from '../database/prisma.service';
 import type { HistoryQuery } from './history.dto';
 
 export const SUMMARY_SELECT = {
   id: true, projectId: true, status: true, createdAt: true, startedAt: true, finishedAt: true,
-  profileVersion: true, errorCode: true, errorMessage: true, statistics: true,
+  profileVersion: true, errorCode: true, errorMessage: true, statistics: true, projectSnapshot: true,
 } as const satisfies Prisma.AnalysisSelect;
 
 export function summary(record: Pick<Analysis, keyof typeof SUMMARY_SELECT>): AnalysisSummary {
@@ -18,6 +18,7 @@ export function summary(record: Pick<Analysis, keyof typeof SUMMARY_SELECT>): An
     startedAt: record.startedAt?.toISOString() ?? null,
     finishedAt: record.finishedAt?.toISOString() ?? null,
     profileVersion: record.profileVersion,
+    projectSnapshot: record.projectSnapshot as unknown as ProjectSnapshot | null,
     error: record.errorCode ? { code: record.errorCode, message: record.errorMessage ?? 'Analyse échouée.' } : null,
     statistics: statistics ? {
       analyzedFileCount: statistics.analyzedFileCount ?? 0,

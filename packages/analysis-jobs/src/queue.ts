@@ -18,8 +18,13 @@ export class AnalysisQueue {
   constructor(readonly client: PrismaClient) {}
 
   async enqueue(projectId: string, sources: { key: string; digest: string }) {
-    return this.client.analysis.create({
-      data: { projectId, sourceKey: sources.key, sourceDigest: sources.digest },
+    return this.client.$transaction(async (transaction) => {
+      const project = await transaction.project.findUniqueOrThrow({ where: { id: projectId } });
+      return transaction.analysis.create({ data: {
+        projectId, sourceKey: sources.key, sourceDigest: sources.digest,
+        projectSnapshot: { ...project, createdAt: project.createdAt.toISOString(), updatedAt: project.updatedAt.toISOString(),
+          capturedAt: new Date().toISOString(), origin: 'ANALYSIS_REQUEST' },
+      } });
     });
   }
 
