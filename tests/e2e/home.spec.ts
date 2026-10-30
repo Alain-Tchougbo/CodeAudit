@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
+import { zip } from '../../packages/analysis-jobs/test/zip-builder';
 
 const apiUrl = `http://127.0.0.1:${process.env.E2E_API_PORT ?? '3100'}`;
 const createdIds = new Set<string>();
@@ -11,7 +15,7 @@ test.afterEach(async ({ request }) => {
 
 test('crée, retrouve, modifie et supprime un projet via les véritables endpoints', async ({ page, request }) => {
   const name = `Projet E2E ${randomUUID()}`;
-  await page.goto('/');
+  await page.goto('/projects');
   await expect(page.getByRole('heading', { name: 'Projets', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Ajouter un projet' }).click();
   await page.getByLabel('Nom du projet').fill(name);
@@ -22,7 +26,7 @@ test('crée, retrouve, modifie et supprime un projet via les véritables endpoin
   const created = await (await createdResponse).json() as { id: string };
   createdIds.add(created.id);
   await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
-  await expect(page.getByRole('status')).toHaveText('Projet créé.');
+  await expect(page.getByRole('status').filter({ hasText: 'Projet créé.' })).toBeVisible();
   await page.reload();
   await expect(page.getByText('Description persistée', { exact: true })).toBeVisible();
 
@@ -51,4 +55,44 @@ test('explique une ressource absente depuis une URL directe', async ({ page }) =
   await page.goto(`/projects/${randomUUID()}`);
   await expect(page.getByRole('alert')).toContainText('Projet introuvable.');
   await expect(page.getByRole('link', { name: 'Retour aux projets' })).toBeVisible();
+});
+
+test('consulte un véritable rapport depuis le tableau de bord, filtre et pagine sur mobile', async ({ page, request }) => {
+  const name = `Audit E2E ${randomUUID()}`;
+  const project = await request.post(`${apiUrl}/api/projects`, { data: { name } });
+  expect(project.status()).toBe(201);
+  const { id: projectId } = await project.json() as { id: string }; createdIds.add(projectId);
+  const archive = zip([{ name: 'src/index.js', data: Array.from({ length: 25 }, (_, index) => `missing${index};`).join('\n') + '\nconsole.log("warning");' }]);
+  const queued = await request.post(`${apiUrl}/api/projects/${projectId}/analyses`, { multipart: { archive: { name: 'project.zip', mimeType: 'application/zip', buffer: archive } } });
+  expect(queued.status()).toBe(202);
+  const { id } = await queued.json() as { id: string };
+  const worker = spawn(process.execPath, [resolve('apps/worker/dist/index.js')], { env: { ...process.env, DATABASE_URL: process.env.TEST_DATABASE_URL }, stdio: 'ignore', windowsHide: true });
+  try {
+    await expect.poll(async () => (await (await request.get(`${apiUrl}/api/analyses/${id}`)).json() as { status: string }).status, { timeout: 20000 }).toBe('SUCCEEDED');
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Tableau de bord', exact: true })).toBeVisible();
+    await page.getByRole('link', { name: new RegExp(name) }).click();
+    await expect(page.getByRole('heading', { name: 'Détail de l’analyse' })).toBeVisible();
+    await expect(page.locator('tbody tr')).toHaveCount(20);
+    await page.getByLabel('Gravité', { exact: true }).selectOption('warning');
+    await page.getByLabel('Règle ESLint', { exact: true }).selectOption('no-console');
+    await expect(page.locator('tbody tr')).toHaveCount(1);
+    await expect(page.locator('tbody')).toContainText('src/index.js');
+    await page.getByLabel('Nom de fichier').fill('absent.ts');
+    await expect(page.getByText('Aucun problème ne correspond aux filtres.', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Réinitialiser les filtres' }).click();
+    await page.getByRole('button', { name: 'Suivant', exact: true }).click();
+    await expect(page.locator('tbody tr')).toHaveCount(6);
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: '.tmp/analysis-results-mobile.png', fullPage: true });
+    await page.getByRole('link', { name: 'Voir le projet et son historique' }).click();
+    await expect(page.getByRole('heading', { name: 'Historique des analyses' })).toBeVisible();
+    await expect(page.locator(`a[href="/analyses/${id}"]`)).toBeVisible();
+  } finally {
+    if (worker.exitCode === null && worker.signalCode === null) {
+      const exited = once(worker, 'exit', { signal: AbortSignal.timeout(5000) });
+      worker.kill('SIGTERM'); await exited;
+    }
+  }
 });

@@ -1,7 +1,8 @@
 # Spécification MVP — CodeAudit
 
 Statut : projets, moteur, import ZIP, file PostgreSQL et worker disponibles.
-Les écrans des analyses et les filtres de diagnostics restent à réaliser.
+Le tableau de bord, le suivi et les filtres de diagnostics sont disponibles.
+Le formulaire de lancement ZIP reste à réaliser.
 
 ## Objectif et périmètre
 
@@ -103,14 +104,16 @@ Supprimer un projet entraîne la suppression transactionnelle de ses rapports ;
 refuser cette opération tant qu'un travail est QUEUED ou RUNNING.
 Une nouvelle analyse nécessite un nouvel import après suppression des sources.
 
-## API et interface futures
+## API et interface
 
-Routes prévues sous /api :
+Routes disponibles sous /api :
 - POST/GET /projects ; GET/PATCH/DELETE /projects/:id ;
 - POST /projects/:id/analyses (ZIP), GET /projects/:id/analyses ;
 - GET /analyses/:id ; GET /analyses/:id/results (rapport JSON, SUCCEEDED uniquement).
-La pagination et les filtres de diagnostics ainsi qu'un endpoint d'export dédié
-restent à développer. Le rapport complet est déjà récupérable en JSON.
+- GET /dashboard (compteurs réels et dix dernières analyses).
+Les filtres de diagnostics et leur pagination sont disponibles côté navigateur.
+Un endpoint de filtrage/pagination serveur et un endpoint d'export dédié restent
+à développer. Le rapport complet est déjà récupérable en JSON.
 
 GET /health indique que le processus HTTP répond
 et ne garantit pas l'accès à PostgreSQL. Vite transmet /api/health à /health en local.

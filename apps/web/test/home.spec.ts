@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import type { Project } from '@codeaudit/contracts';
 import { ProjectApiError, projectsApi } from '../src/api/projects';
+import { analysesApi } from '../src/api/analyses';
 import ProjectsListView from '../src/views/ProjectsListView.vue';
 import ProjectCreateView from '../src/views/ProjectCreateView.vue';
 import ProjectDetailView from '../src/views/ProjectDetailView.vue';
@@ -34,6 +35,7 @@ async function screen(path = '/projects') {
 }
 
 beforeEach(() => {
+  vi.spyOn(analysesApi, 'history').mockResolvedValue({ items: [], nextCursor: null });
   vi.spyOn(projectsApi, 'list').mockResolvedValue([]);
   vi.spyOn(projectsApi, 'get').mockResolvedValue(project);
   vi.spyOn(projectsApi, 'create').mockResolvedValue(project);

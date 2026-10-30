@@ -45,7 +45,9 @@ Les UUID invalides, archives absentes ou dangereuses sont rejetés ; ressource
 inexistante : 404 ; limite de taille : 413 ; deux extractions déjà en cours dans
 une instance API : 429. Le nom et le type MIME fournis ne sont pas considérés
 comme une preuve de validité du ZIP. Les chemins internes et jetons de réservation
-ne sont pas exposés. Les écrans de lancement/suivi des analyses restent à développer.
+ne sont pas exposés. Le tableau de bord, le suivi, l'historique et les résultats
+sont consultables dans Vue ; le lancement par formulaire ZIP reste à développer.
+Voir [les interfaces de consultation](consultation.md).
 
 ## File, concurrence et interruption
 

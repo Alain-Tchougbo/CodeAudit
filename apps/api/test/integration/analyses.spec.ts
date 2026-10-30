@@ -154,6 +154,36 @@ describe('Exécution des analyses — PostgreSQL réel', () => {
     await request(app.getHttpServer()).get(`/api/projects/${projectId}/analyses?cursor=${randomUUID()}`).expect(400);
   });
 
+  it('calcule les indicateurs globaux depuis les données persistées et exclut les échecs des diagnostics', async () => {
+    const baseline = (await request(app.getHttpServer()).get('/api/dashboard').expect(200)).body;
+    await client.analysis.createMany({ data: [
+      { projectId, status: 'QUEUED' }, { projectId, status: 'RUNNING' },
+      { projectId, status: 'FAILED', statistics: { errorCount: 99, warningCount: 99 } },
+      { projectId, status: 'SUCCEEDED', statistics: { errorCount: 3, warningCount: 7 } },
+    ] });
+    const response = (await request(app.getHttpServer()).get('/api/dashboard').expect(200)).body;
+    expect(response).toMatchObject({
+      projectCount: baseline.projectCount, analysisCount: baseline.analysisCount + 4,
+      completedCount: baseline.completedCount + 2, succeededCount: baseline.succeededCount + 1,
+      failedCount: baseline.failedCount + 1, queuedCount: baseline.queuedCount + 1, runningCount: baseline.runningCount + 1,
+      errorCount: baseline.errorCount + 3, warningCount: baseline.warningCount + 7,
+    });
+    expect(response.latestAnalyses.some((item: { projectId: string }) => item.projectId === projectId)).toBe(true);
+    expect(response.latestAnalyses[0]).toHaveProperty('projectName');
+    expect(response.latestAnalyses[0]).not.toHaveProperty('report');
+    expect(response.latestAnalyses[0]).not.toHaveProperty('lockToken');
+    await client.analysis.deleteMany({ where: { projectId } });
+    expect((await request(app.getHttpServer()).get('/api/dashboard').expect(200)).body).toEqual(baseline);
+  });
+
+  it('borne les dernières analyses à dix et applique un ordre stable', async () => {
+    await client.analysis.createMany({ data: Array.from({ length: 12 }, () => ({ projectId })) });
+    const response = (await request(app.getHttpServer()).get('/api/dashboard').expect(200)).body;
+    expect(response.latestAnalyses).toHaveLength(10);
+    const expected = await client.analysis.findMany({ orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 10 });
+    expect(response.latestAnalyses.map((item: { id: string }) => item.id)).toEqual(expected.map((item) => item.id));
+  });
+
   it('renvoie 404 pour un projet ou une analyse absents', async () => {
     await request(app.getHttpServer()).get(`/api/analyses/${randomUUID()}`).expect(404);
     await request(app.getHttpServer()).get(`/api/analyses/${randomUUID()}/results`).expect(404);

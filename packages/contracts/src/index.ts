@@ -51,3 +51,43 @@ export interface AnalysisSummary {
     syntaxErrorCount: number;
   } | null;
 }
+
+export interface AnalysisHistory {
+  items: AnalysisSummary[];
+  nextCursor: string | null;
+}
+
+export interface AnalysisIssue {
+  filePath: string;
+  severity: 'error' | 'warning';
+  ruleId: string | null;
+  message: string;
+  line: number | null;
+  column: number | null;
+  kind: 'lint' | 'syntax';
+}
+
+/** Public fields consumed by the consultation UI; the report contains additional metadata. */
+export interface AnalysisResults {
+  schemaVersion: 1;
+  profile: { version: string };
+  issues: AnalysisIssue[];
+  statistics: NonNullable<AnalysisSummary['statistics']> & {
+    durationMs: number;
+    ignoredEntryCount: number;
+    bytesRead: number;
+  };
+}
+
+export interface Dashboard {
+  projectCount: number;
+  analysisCount: number;
+  completedCount: number;
+  succeededCount: number;
+  failedCount: number;
+  queuedCount: number;
+  runningCount: number;
+  errorCount: number;
+  warningCount: number;
+  latestAnalyses: (AnalysisSummary & { projectName: string })[];
+}
