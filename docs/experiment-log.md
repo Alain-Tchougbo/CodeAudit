@@ -654,3 +654,15 @@ SMTP et ports ont été ajoutées au seul .env ignoré, en conservant les identi
 et le port de la base existante. La boîte de test reste sur 1026/8026. Aucun secret
 n'a été ajouté à Git. Le lancement documenté reste local, sans validation de
 déploiement public HTTPS, de messagerie externe ou de sécurité de production.
+
+Vérification sur le serveur local relancé : HTTP 200 du frontend 5173, de l'API
+3000/health, du proxy /api/health et de Mailpit 8027 ; projets sans session : 401.
+`pnpm db:check` confirme l'absence de différence entre schéma local et Prisma.
+Chromium a ouvert l'inscription, vérifié la redirection protégée de /teams vers
+la connexion, puis le message de lien d'invitation incomplet, sans créer de compte
+dans la base de démonstration. L'inspection de la capture mobile a révélé un
+chevauchement du logo et du titre d'invitation : espacement supérieur et hauteur
+minimale corrigés, capture réexaminée. Le test Playwright d'équipes vérifie désormais
+les positions du titre et du logo et l'absence de débordement à 320, 390 et 1440 px.
+Lint, typage des outils puis parcours complet des équipes relancés : succès,
+1/1 test Chromium en 24,4 secondes, dont 16,4 secondes pour le parcours.

@@ -20,7 +20,14 @@ test('partage un vrai rapport par invitation SMTP, puis change et révoque les d
     await expect(page.getByText('Terminée', { exact: true })).toBeVisible({ timeout: 25000 }); const analysisId = /\/analyses\/([^/?]+)/.exec(page.url())![1];
     await page.goto(`/projects/${projectId}`); await page.getByLabel('Équipe destinataire').selectOption(teamId); await page.getByRole('button', { name: 'Partager le projet', exact: true }).click(); await page.getByRole('button', { name: 'Confirmer le partage avec l’équipe', exact: true }).click(); await expect(page.getByText('Projet partagé avec', { exact: false })).toBeVisible();
     await page.goto(`/teams/${teamId}`); await page.getByLabel('Adresse e-mail à inviter').fill(email); await page.getByLabel('Rôle proposé').selectOption('READER'); await page.getByRole('button', { name: 'Envoyer l’invitation' }).click(); await expect(page.getByRole('status').filter({ hasText: 'Invitation envoyée' })).toBeVisible();
-    const link = new URL(await invitationLink(email)); await invited.goto(`${link.pathname}${link.hash}`); await invited.getByRole('link', { name: 'Créer un compte', exact: true }).click(); expect(invited.url()).not.toContain('token');
+    const link = new URL(await invitationLink(email)); await invited.goto(`${link.pathname}${link.hash}`);
+    for (const width of [320, 390, 1440]) {
+      await invited.setViewportSize({ width, height: 900 });
+      const title = await invited.getByRole('heading', { name: 'Rejoindre une équipe', exact: true }).boundingBox(); const header = await invited.locator('.auth-header').boundingBox();
+      expect(title && header && title.y >= header.y + header.height + 16).toBe(true);
+      expect(await invited.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    }
+    await invited.getByRole('link', { name: 'Créer un compte', exact: true }).click(); expect(invited.url()).not.toContain('token');
     await invited.getByLabel('Nom', { exact: true }).fill('Camille Reader'); await invited.getByLabel('Adresse e-mail').fill(email); await invited.getByLabel('Mot de passe', { exact: true }).fill('Browser test password 2026!');
     const registered = invited.waitForResponse(response => response.url().endsWith('/api/auth/register') && response.request().method() === 'POST'); await invited.getByRole('button', { name: 'Créer mon compte', exact: true }).click(); recipient = await (await registered).json() as AuthProfile;
     await expect(invited.getByRole('heading', { name: teamName, exact: true })).toBeVisible(); await invited.getByRole('button', { name: 'Accepter l’invitation', exact: true }).click(); await expect(invited).toHaveURL(new RegExp(`/teams/${teamId}$`));

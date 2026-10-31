@@ -24,7 +24,7 @@ async function switchAccount() {
 }
 </script>
 <template>
-  <section class="mx-auto max-w-xl px-5 py-12">
+  <section class="mx-auto min-h-screen max-w-xl px-6 pb-12 pt-28 sm:pt-36">
     <p class="eyebrow">
       Collaborer
     </p><h1 class="page-title">
