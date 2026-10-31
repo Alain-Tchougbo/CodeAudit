@@ -4,6 +4,9 @@ import { DatabaseModule } from '../database/database.module';
 import { AuthService } from './auth.service';
 import { LoginDto, RegisterDto } from './auth.dto';
 import { Public, type AuthRequest, type CookieResponse } from './auth.types';
+import { MailService } from './mail.service';
+import { RecoveryService } from './recovery.service';
+import { AccountController } from './account.controller';
 @Injectable()
 class SessionGuard implements CanActivate {
   constructor(private readonly auth: AuthService, private readonly reflector: Reflector) {}
@@ -26,5 +29,5 @@ class AuthController {
   @Public() @Post('logout') @HttpCode(204)
   async logout(@Req() request: AuthRequest, @Res({ passthrough: true }) response: CookieResponse) { await this.auth.logout(request, response); }
 }
-@Module({ imports: [DatabaseModule], controllers: [AuthController], providers: [AuthService, { provide: APP_GUARD, useClass: SessionGuard }] })
+@Module({ imports: [DatabaseModule], controllers: [AuthController, AccountController], providers: [AuthService, MailService, RecoveryService, { provide: APP_GUARD, useClass: SessionGuard }] })
 export class AuthModule {}

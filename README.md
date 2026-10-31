@@ -21,6 +21,7 @@ pnpm install --frozen-lockfile
 if (!(Test-Path .env)) { Copy-Item .env.example .env }
 pnpm db:up
 pnpm db:migrate
+pnpm mail:up
 pnpm dev
 ```
 
@@ -44,6 +45,22 @@ utiliser d'autres ports. Ils ne sont pas chargés implicitement depuis .env par 
 pnpm dev génère le client Prisma et compile les packages partagés avant les serveurs.
 Après modification d'un package partagé, relancer pnpm build:packages.
 pnpm db:down arrête PostgreSQL en conservant son volume.
+
+### Récupération de compte et sessions
+
+Configurer SMTP_HOST=127.0.0.1 et SMTP_PORT=1026 dans .env pour le service
+Mailpit local (`pnpm mail:up`). Ouvrir http://127.0.0.1:8026 pour lire uniquement
+les messages de développement. Aucune livraison externe n'est configurée.
+Depuis `/forgot-password`, demander un lien ; il expire après 15 minutes et ne
+fonctionne qu'une fois. Le changement révoque toutes les sessions du compte.
+Dans « Mon profil », consulter les sessions actives et révoquer une session ou
+toutes les sessions. Aucun nom d'appareil ni emplacement géographique n'est déduit.
+
+Le SMTP réel exige TLS en production, SMTP_USER/SMTP_PASSWORD si nécessaire,
+MAIL_FROM et AUTH_APP_ORIGIN correctement configurés. Ces secrets restent côté
+serveur. Sans SMTP_HOST, la récupération est explicitement indisponible.
+Pour les tests PostgreSQL/Playwright, lancer aussi Mailpit ; TEST_SMTP_PORT et
+TEST_MAILPIT_API_URL valent par défaut 1026 et http://127.0.0.1:8026.
 
 ### Configuration
 

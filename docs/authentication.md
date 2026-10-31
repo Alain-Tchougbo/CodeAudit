@@ -31,6 +31,11 @@ Deux calculs au plus sont admis simultanément par processus ; une saturation re
 | POST /api/auth/login | Email/password ; 200, nouvelle session et profil |
 | GET /api/auth/me | Profil courant, csrfToken et expiresAt ; 401 si absent/expiré |
 | POST /api/auth/logout | Révocation de la session courante, cookie effacé, 204 |
+| POST /api/auth/forgot-password | Email ; 202 générique, quota 3/email et 10/IP par 15 minutes |
+| POST /api/auth/reset-password | Token et password ; 204, toutes les sessions du compte révoquées |
+| GET /api/auth/sessions | Sessions actives du compte, identifiants publics distincts des cookies |
+| DELETE /api/auth/sessions/:id | Révocation d'une session possédée ; 404 pour une autre personne |
+| POST /api/auth/logout-all | Révocation de toutes les sessions du compte, cookie effacé |
 
 Le profil expose seulement id, name, email et createdAt. Le nom est tronqué des
 espaces périphériques et limité à 120 caractères. L'adresse est trimée, passée en
@@ -153,12 +158,38 @@ expiration réelle en base et refus de lecture/modification/suppression étrang�
 
 Les attributs Secure/__Host sont vérifiés en test API ; un déploiement HTTPS réel
 n'a pas été testé de bout en bout. Ni pentest, audit cryptographique indépendant,
-MFA, vérification d'adresse, récupération de mot de passe, gestion d'appareils ou
-déconnexion globale n'est fourni par ce lot. La configuration de proxy, les quotas
+MFA ou vérification d'adresse n'est fourni. La configuration de proxy, les quotas
 publics, la supervision et les protections système du worker restent à revoir
 avant production. Un logout ne peut pas annuler une requête déjà admise ni un
 travail d'analyse déjà mis en file. Les tests exercés ne constituent pas une garantie
 générale de sécurité.
+
+## Récupération et sessions actives
+
+La migration 20261031000300_account_recovery ajoute un identifiant public UUID
+aux sessions et PasswordResetToken. Un seul lien de récupération est valide par
+compte ; demander un nouveau lien invalide le précédent. Seul son SHA-256 est
+stocké. Validité 15 minutes, consommation transactionnelle unique, mot de passe
+scrypt et suppression des sessions dans la même transaction. Une concurrence
+sur le même lien ne permet qu'un changement. La session éventuellement présente
+dans le navigateur est également fermée pour éviter un profil incohérent.
+
+Le lien est construit depuis AUTH_APP_ORIGIN, jamais depuis Host. Le secret de
+récupération reste dans le fragment de l'URL, puis est supprimé après succès ;
+referrer-policy=no-referrer. Il n'est conservé dans aucun stockage navigateur.
+Les réponses de demande sont identiques pour les adresses connues ou inconnues.
+Un échec SMTP est journalisé sans adresse ni jeton et garde cette réponse
+générique ; les délais SMTP sont bornés. Le timing des demandes n'est pas rendu
+constant : aucune garantie d'absence de canal temporel n'est revendiquée.
+
+Nodemailer utilise TLS avec validation des certificats en production et pour un
+serveur distant. Le Mailpit facultatif de Compose accepte du SMTP local sans
+authentification, écoute uniquement sur loopback et n'envoie rien à l'extérieur.
+Son reverse DNS est désactivé pour éviter les délais observés dans Docker Desktop
+([option Mailpit](https://mailpit.axllent.org/docs/configuration/runtime-options/)).
+Ces vérifications locales ne valident pas la délivrabilité ni une infrastructure
+SMTP/TLS de production. Les sessions affichent dates et session courante, jamais
+le condensat du cookie ; la suppression exige propriété et CSRF.
 
 Au contrôle local du 31 octobre 2026, `pnpm audit --prod` ne signale aucune
 vulnérabilité après passage de minimatch à 11.0.1. L'audit complet garde deux

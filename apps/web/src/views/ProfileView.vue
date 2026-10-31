@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { authState } from '../auth-state';
 import AppIcon from '../components/AppIcon.vue';
+import ActiveSessions from '../components/ActiveSessions.vue';
 import { date } from '../format';
 const initials = computed(() => authState.user.value?.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() ?? '');
 </script>
@@ -68,5 +69,6 @@ const initials = computed(() => authState.user.value?.name.trim().split(/\s+/).s
         </p>
       </aside>
     </div>
+    <ActiveSessions />
   </section>
 </template>

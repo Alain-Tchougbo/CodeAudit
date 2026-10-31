@@ -397,3 +397,34 @@ Les intégrations locales ont pris environ 345 secondes ; elles ont terminé ave
 Traces dans .tmp/context-*.log. Coloration lexicale simple, extraits parfois tronqués,
 absence d'aperçu pour les rapports antérieurs ou sans consentement ; aucun nouveau
 contrôle Safari/Firefox/lecteur d'écran ni déploiement HTTPS n'est revendiqué.
+
+## 31 octobre 2026 — récupération de compte et sessions, lot 3
+
+Branche feat/account-recovery depuis origin/staging après fusion de la PR 8.
+Migration 20261031000300_account_recovery exécutée sur PostgreSQL local et dédié
+aux tests : UUID public de session et jeton de récupération condensé, unique par
+compte, expirant en 15 minutes. Réinitialisation transactionnelle à usage unique,
+scrypt et révocation des sessions. Révocation individuelle et globale protégée
+par propriétaire et CSRF. Écrans Vue, erreurs, confirmations, routes publiques et
+annulation des réponses obsolètes ajoutés sans stockage local de jetons.
+
+Nodemailer 10.3.1 ajouté pour le transport SMTP réel ; Mailpit v1.33.0 facultatif
+sur loopback pour les messages de développement et tests, sans relais externe.
+Difficulté réellement observée : quatre tests de récupération échouaient faute
+de message. Le TCP Docker s'ouvrait mais l'accueil SMTP attendait un reverse DNS.
+Après désactivation documentée du reverse DNS dans Mailpit, l'envoi de diagnostic
+SMTP réel a réussi. Aucun assouplissement TLS du transport de production.
+
+Vérifications déjà terminées : pnpm check (198 cas), puis 96 tests Vue dont le
+nouveau cas de navigation pendant une requête (199 cas distincts au total).
+Lint et typage Vue finaux, builds, validation Prisma, configuration Compose et
+pnpm audit --prod réussis. Les suites PostgreSQL et Chromium sont relancées après
+la correction SMTP ; leurs résultats définitifs seront inscrits ci-dessous.
+SMTP/TLS de production, délivrabilité, MFA et audit externe non vérifiés.
+
+Résultats après correction SMTP : 111/111 tests d'intégration PostgreSQL réels
+réussis (297 secondes). Première passe Chromium : 12 succès et un échec de
+sélecteur ambigu entre chargement et confirmation ; même échec en CI, sans fusion.
+Sélecteur précisé par son texte, puis suite Chromium complète : 13/13 réussis
+(1,4 minute), dont récupération via vrai SMTP, ancien cookie refusé, révocation
+d'un autre appareil puis de toutes les sessions. Traces .tmp/recovery-*.log.

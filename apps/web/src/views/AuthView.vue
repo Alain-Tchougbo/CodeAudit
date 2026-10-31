@@ -42,6 +42,13 @@ async function submit() {
         >
           {{ authState.error.value }}
         </p>
+        <p
+          v-if="route.query.logout === 'all' || route.query.logout === 'current'"
+          role="status"
+          class="notice notice-success"
+        >
+          {{ route.query.logout === 'all' ? 'Toutes les sessions ont été fermées.' : 'Cette session a été fermée.' }}
+        </p>
         <form
           method="post"
           :aria-busy="busy"
@@ -112,6 +119,11 @@ async function submit() {
               >
                 De 12 à 128 caractères.
               </p>
+              <RouterLink
+                v-if="!registering"
+                to="/forgot-password"
+                class="text-link mt-2 text-xs"
+              >Mot de passe oublié ?</RouterLink>
             </div>
             <button
               type="submit"
