@@ -12,6 +12,15 @@ le suivi, l'historique et les rapports JSON persistés. Un worker indépendant t
 la file PostgreSQL, avec réservation atomique, délais et reprise après interruption.
 Le tableau de bord et les pages de consultation des analyses sont disponibles.
 
+Dans la fiche d'un projet, « Profil de règles » propose Essentiel
+(`codeaudit-js-ts-v1`, comportement historique) et Strict
+(`codeaudit-js-ts-strict-v1`). Le détail des règles vient de l'API. Le choix est
+enregistré pour les prochaines demandes ; chaque demande fige sa version avant
+l'exécution et les anciens rapports ne changent pas. Strict transforme console,
+variables inutilisées et `any` explicite en erreurs, et avertit sur une complexité
+supérieure à 10 ou une profondeur supérieure à 4. Aucun profil fourni par le
+projet importé, plugin externe, configuration inline ou correctif n'est exécuté.
+
 ## Installation et démarrage
 
 Prérequis : Node.js 24.15+ dans la branche 24, pnpm 12.3.4, Docker avec Compose.

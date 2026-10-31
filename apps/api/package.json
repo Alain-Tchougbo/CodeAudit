@@ -12,28 +12,29 @@
     "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.integration.config.cjs --runInBand"
   },
   "dependencies": {
-    "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1",
+    "@codeaudit/analysis-jobs": "workspace:*",
+    "@codeaudit/analyzer": "workspace:*",
     "@codeaudit/contracts": "workspace:*",
+    "@codeaudit/database": "workspace:*",
     "@nestjs/common": "^11.1.0",
     "@nestjs/core": "^11.1.0",
     "@nestjs/platform-express": "^11.1.0",
-    "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2",
-    "@codeaudit/database": "workspace:*",
-    "class-validator": "^0.14.2",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "class-transformer": "^0.5.1",
-    "@codeaudit/analysis-jobs": "workspace:*"
+    "class-validator": "^0.14.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@codeaudit/config": "workspace:*",
     "@nestjs/testing": "^11.1.0",
     "@types/jest": "^30.0.0",
+    "@types/multer": "^2.0.0",
     "@types/supertest": "^6.0.0",
     "jest": "^30.0.0",
     "supertest": "^7.1.0",
     "ts-jest": "^29.4.0",
-    "ts-node": "^10.9.2",
-    "@types/multer": "^2.0.0"
+    "ts-node": "^10.9.2"
   }
 }

@@ -33,6 +33,7 @@ export interface AnalysisLimits {
 }
 
 export interface AnalyzeOptions {
+  profileVersion?: string;
   signal?: AbortSignal;
   limits?: Partial<AnalysisLimits>;
 }

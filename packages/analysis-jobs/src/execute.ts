@@ -34,7 +34,7 @@ export async function processNext(queue: AnalysisQueue, store: SourceStore, work
     let directory: string;
     try { directory = await store.sources(claim.sourceKey); }
     catch { throw new JobError('SOURCE_MISSING', 'Les sources de cette analyse sont absentes ou invalides.'); }
-    const report = await runThread<AnalysisReport>(join(__dirname, '../dist/analyze-thread.js'), { directory }, {
+    const report = await runThread<AnalysisReport>(join(__dirname, '../dist/analyze-thread.js'), { directory, profileVersion: claim.profileVersion ?? undefined }, {
       signal: cancellation.signal,
       timeoutMs: Math.max(1, claim.deadlineAt.getTime() - Date.now()),
       timeoutCode: 'ANALYSIS_TIMEOUT',
