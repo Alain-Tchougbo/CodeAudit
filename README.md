@@ -215,7 +215,7 @@ pour fusionner vers staging. Les actions sont validables avec actionlint.
 
 ## Limites avant un usage en production
 
-Ce MVP est destiné à une démonstration locale mono-utilisateur. Les contrôles V8
+Ce MVP est destiné à une démonstration locale avec des comptes et données isolés. Les contrôles V8
 et les threads ne fournissent ni plafond RSS global, ni sandbox système, ni
 interdiction réseau. Les limites sont par import/analyse, sans quota global de
 stockage ou de file. Aucun audit des ACL Windows, test de charge prolongé,
