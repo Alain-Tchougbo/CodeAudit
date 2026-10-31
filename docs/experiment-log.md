@@ -763,3 +763,40 @@ Test réel avec barrière PostgreSQL réussi après correction ; instrumentation
 diagnostic retirée, tests de discrimination positifs/négatifs ajoutés. Tests API
 relancés : 73/73, typage API réussi. Régression PostgreSQL complète reprise dans
 des processus séparés, avec désormais 35 tests ciblés de comptes et sécurité.
+
+Le passage suivant a révélé une limite globale involontaire pour le fournisseur
+OAuth public : la chaîne GITHUB servait d'identifiant de quota pour tous les
+clients et survivait aux scénarios. Le démarrage public utilise désormais seulement
+le quota IP ; l'association authentifiée conserve en plus le quota par utilisateur,
+et le challenge MFA son quota par flux. Un test préremplit l'ancien quota global
+et confirme qu'il ne bloque pas les autres clients. Limites IP conservées.
+Les 35/35 intégrations ciblées ont ensuite réussi en 93 secondes, sans l'avertissement
+pg de l'ancien export parallèle et avec le test de conflit déterministe.
+
+### Bilan vérifié
+
+La CI Linux 41201281369 sur d31c333 est verte : installation figée, audit de
+production, pnpm check, Compose, migrations, schéma, 192/192 tests PostgreSQL
+regroupés dans 12 suites et 21/21 parcours Chromium. Le total unitaires/frontend
+est 286 (28 analyzer, 56 jobs, 73 API, 129 Vue), après les deux tests de conflits
+ajoutés au bilan initial de 284. La reprise locale complète des 21 parcours est
+également verte ; les 35 cas ciblés de comptes et sécurité et le conflit réel
+PostgreSQL passent localement. Les suites préexistantes sont aussi reprises dans
+des processus séparés pour compléter la non-régression sur ce poste Windows.
+
+Builds API et frontend locaux relancés, comparaison Prisma sans différence et
+absence d'analyse locale active confirmées avant redémarrage des seuls services
+dont les PID et lignes de commande appartiennent à CodeAudit. Lancement masqué
+avec API/worker compilés et Vite preview : HTTP 200 sur frontend 5173, API 3000/health,
+proxy /api/health et boîte Mailpit 8027. Chromium sur ce serveur local vérifie
+inscription, protection de /teams, invitations incomplètes, nouvelle page de
+confirmation d'adresse et métadonnées OAuth, sans créer de compte de démonstration.
+La clé serveur est présente dans le .env ignoré, pas dans Git ni dans les réponses.
+
+La dernière mise à jour de documentation doit obtenir ses propres contrôles avant
+fusion de la PR 15 vers staging. Aucune livraison vers main n'est réalisée.
+Les connexions GitHub/GitLab sont implémentées et testées avec transport contrôlé,
+mais restent indisponibles en environnement local sans applications OAuth et
+identifiants réels. Configuration et vérification interactive fournisseur restent
+à réaliser par l'opérateur. Aucun pentest, audit cryptographique indépendant,
+déploiement public HTTPS ou livraison Internet des e-mails n'est revendiqué.
