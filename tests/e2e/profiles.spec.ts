@@ -20,7 +20,13 @@ test('enregistre un profil réel et retrouve son choix après analyse et recharg
     const analysisId = /\/analyses\/([^/?]+)/.exec(page.url())![1];
     const report = await (await request.get(`${apiUrl}/api/analyses/${analysisId}/report`)).json();
     expect(report.report.profile.version).toBe('codeaudit-js-ts-strict-v1'); expect(report.report.statistics).toMatchObject({ errorCount: 1, warningCount: 0 });
-    for (const width of [1440, 390, 320]) { await page.setViewportSize({ width, height: 900 }); await page.goto(`/projects/${id}`); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); }
+    for (const width of [1440, 390, 320]) {
+      await page.setViewportSize({ width, height: 900 }); await page.goto(`/projects/${id}`);
+      await expect(page.getByLabel('Profil des prochaines analyses')).toHaveValue('codeaudit-js-ts-strict-v1');
+      await page.getByText('Voir les règles contrôlées', { exact: true }).click();
+      await expect(page.getByText('@typescript-eslint/no-explicit-any', { exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    }
   } finally {
     if (worker && worker.exitCode === null && worker.signalCode === null) { const exited = once(worker, 'exit', { signal: AbortSignal.timeout(5000) }); worker.kill('SIGTERM'); await exited; }
     expect((await request.delete(`${apiUrl}/api/projects/${id}`)).status()).toBe(204);
