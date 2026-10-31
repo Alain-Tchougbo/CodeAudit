@@ -17,7 +17,7 @@ test('inscription responsive, profil, rechargement, deconnexion et reconnexion',
   const cookie = (await page.context().cookies()).find((item) => item.name === 'codeaudit.sid')!; expect(cookie.httpOnly).toBe(true); expect(cookie.sameSite).toBe('Lax');
   expect(await page.evaluate(() => document.cookie.includes('codeaudit.sid'))).toBe(false);
   await page.getByRole('link', { name: 'Mon profil' }).click(); await expect(page.getByRole('definition').filter({ hasText: email })).toBeVisible();
-  await page.reload(); await expect(page.getByRole('heading', { name: 'Mon profil' })).toBeVisible();
+  await page.reload(); await expect(page.getByRole('heading', { name: 'Mon profil', exact: true, level: 1 })).toBeVisible();
   expect(await page.evaluate(() => localStorage.length + sessionStorage.length)).toBe(0);
   await page.getByRole('button', { name: 'Se déconnecter' }).click(); await expect(page).toHaveURL(/\/login$/);
   expect((await page.request.get(`${apiUrl}/api/projects`, { headers: { Cookie: `codeaudit.sid=${cookie.value}` } })).status()).toBe(401);
