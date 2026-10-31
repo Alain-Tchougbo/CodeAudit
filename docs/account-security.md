@@ -142,7 +142,9 @@ le profil, les métadonnées des sessions/clés/identités, adhésions, événem
 et leurs rapports enregistrés. Les projets partagés sont seulement référencés.
 Il exclut mots de passe, condensats, jetons, secrets/codes 2FA, extraits de code,
 sources temporaires et rapports des équipes. Limites synchrones : 500 projets
-personnels, 5 000 analyses et 32 Mio. Un dépassement donne 413 sans export partiel.
+personnels, 5 000 analyses, 10 000 événements et 32 Mio. La taille des JSON des
+rapports est vérifiée dans PostgreSQL avant chargement en mémoire de l'API.
+Un dépassement donne 413 sans export partiel.
 Le snapshot utilise une transaction RepeatableRead.
 
 Supprimer le compte exige mot de passe, second facteur si actif et le texte

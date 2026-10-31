@@ -12,6 +12,7 @@ import { hashPassword } from './password';
 import type { AuthRequest } from './auth.types';
 import type { ChangeEmailDto, ChangePasswordDto, CredentialsDto } from './account-security.dto';
 export const oauthConfigured = (provider: OAuthProvider) => !!process.env[`${provider}_CLIENT_ID`] && !!process.env[`${provider}_CLIENT_SECRET`] && new SecurityCrypto().available();
+const MAX_EXPORT_BYTES = 32 * 1024 * 1024;
 @Injectable()
 export class AccountSecurityService {
   private readonly logger = new Logger(AccountSecurityService.name);
@@ -67,6 +68,15 @@ export class AccountSecurityService {
       const user = await transaction.user.findUniqueOrThrow({ where: { id: userId, authVersion: current.authVersion }, select: { id: true, name: true, email: true, emailVerifiedAt: true, createdAt: true } });
       const personalScope = { ownerId: userId, teamId: null };
       if (await transaction.project.count({ where: personalScope }) > 500 || await transaction.analysis.count({ where: { project: personalScope } }) > 5000) throw new PayloadTooLargeException('Cet export dépasse les limites synchrones (500 projets ou 5 000 analyses). Aucun export partiel n’a été produit.');
+      if (await transaction.securityEvent.count({ where: { userId, createdAt: { gte: securitySince() } } }) > 10000) throw new PayloadTooLargeException('Cet export dépasse 10 000 événements. Aucun export partiel n’a été produit.');
+      const [size] = await transaction.$queryRaw<{ bytes: bigint }[]>(Prisma.sql`
+        SELECT COALESCE(SUM(octet_length(COALESCE(a.report::text, '')) + octet_length(COALESCE(a.statistics::text, ''))
+          + octet_length(COALESCE(a."projectSnapshot"::text, '')) + octet_length(COALESCE(a."sourceMetadata"::text, ''))
+          + octet_length(COALESCE(a."qualityPolicySnapshot"::text, ''))), 0)::bigint AS bytes
+        FROM "Analysis" a JOIN "Project" p ON p.id = a."projectId"
+        WHERE p."ownerId" = ${userId}::uuid AND p."teamId" IS NULL
+      `);
+      if (size && size.bytes > BigInt(MAX_EXPORT_BYTES)) throw new PayloadTooLargeException('Les rapports dépassent 32 Mio. Aucun export partiel n’a été produit.');
       // A transaction owns one connection: query sequentially, preserving its snapshot.
       const projects = await transaction.project.findMany({ where: personalScope, select: { id: true, name: true, description: true, createdAt: true, updatedAt: true, analysisProfileVersion: true, qualityPolicy: true, analyses: { select: { id: true, status: true, createdAt: true, startedAt: true, finishedAt: true, profileVersion: true, projectSnapshot: true, sourceMetadata: true, report: true, statistics: true, errorCode: true, errorMessage: true, qualityPolicySnapshot: true } } } });
       const memberships = await transaction.teamMember.findMany({ where: { userId }, select: { role: true, createdAt: true, team: { select: { id: true, name: true } } } });
@@ -81,7 +91,7 @@ export class AccountSecurityService {
       const pendingOAuth = await transaction.oAuthFlow.findMany({ where: { userId }, select: { provider: true, purpose: true, expiresAt: true } });
       return { schemaVersion: 1, exportedAt: new Date().toISOString(), user, projects, memberships, sharedProjects, identities, apiKeys, sessions, securityEvents, security: { verification, mfa, recoveryCodesRemaining, pendingOAuth }, exclusions: ['passwords', 'authenticationTokens', 'mfaSecretsAndRecoveryCodes', 'sourceCodeContexts', 'sharedProjectReports', 'temporarySources'] };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 30000 });
-    const json = JSON.stringify(document); if (Buffer.byteLength(json) > 32 * 1024 * 1024) throw new PayloadTooLargeException('Cet export dépasse 32 Mio. Aucun export partiel n’a été produit.');
+    const json = JSON.stringify(document); if (Buffer.byteLength(json) > MAX_EXPORT_BYTES) throw new PayloadTooLargeException('Cet export dépasse 32 Mio. Aucun export partiel n’a été produit.');
     await this.audit.record(userId, 'DATA_EXPORTED'); return json;
   }
   async delete(userId: string, input: CredentialsDto, request: AuthRequest) {
