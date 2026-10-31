@@ -13,6 +13,10 @@ test('annule depuis Vue une analyse en attente et la retrouve sans rapport dans 
     await expect(page.getByText('Annulée', { exact: true })).toBeVisible(); await expect(page.getByRole('status').filter({ hasText: 'Analyse annulée' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Exporter le rapport JSON', exact: true })).toBeDisabled(); await expect(page.locator('table')).toHaveCount(0);
     await page.reload(); await expect(page.getByText('Annulée', { exact: true })).toBeVisible();
-    await page.getByRole('link', { name: 'Voir le projet et son historique' }).click(); await expect(page.locator('tbody')).toContainText('Annulée');
+    const analysisUrl = page.url();
+    await page.getByRole('link', { name: 'Voir le projet et son historique' }).click();
+    const history = page.locator('[aria-labelledby="history-title"]');
+    await expect(history.getByText('Annulée', { exact: true })).toBeVisible();
+    await history.getByRole('link').filter({ hasText: 'Annulée' }).click(); await expect(page).toHaveURL(analysisUrl);
   } finally { expect((await request.delete(`${apiUrl}/api/projects/${id}`)).status()).toBe(204); }
 });

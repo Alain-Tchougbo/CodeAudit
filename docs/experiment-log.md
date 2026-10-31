@@ -477,3 +477,10 @@ frontend ensuite 104/104. pnpm check complet réussi avec 211 tests (28 analyzer
 52 jobs, 27 API, 104 Vue), lint/types/builds/Prisma. Ajout d'une septième intégration
 répétant cinq fois la course réservation/annulation, puis lancement des suites
 complètes PostgreSQL et Chromium ; résultats définitifs à inscrire après exécution.
+
+Sept intégrations ciblées finales réussies (31 secondes), puis suite complète
+PostgreSQL : 123/123 réussis (204 secondes). Première suite Chromium : 14 succès
+et un échec dans le nouveau test, qui ciblait un tbody inexistant pour l'historique
+rendu comme liste. Même échec en CI, aucune fusion. Sélecteur corrigé pour la
+section d'historique réelle, avec réouverture de l'analyse depuis cette liste.
+Suite Chromium complète relancée ; résultat définitif à consigner après exécution.
