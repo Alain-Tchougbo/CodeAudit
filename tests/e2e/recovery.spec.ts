@@ -24,7 +24,7 @@ test('révoque un autre appareil puis toutes les sessions depuis le profil', asy
     await page.goto('/profile'); await expect(page.getByRole('heading', { name: 'Sessions actives' })).toBeVisible();
     const sessions = await (await page.request.get(`${apiUrl}/api/auth/sessions`)).json() as ActiveSession[]; const other = sessions.find(session => !session.current)!;
     await page.getByRole('button', { name: `Révoquer la session ${other.id.slice(0, 8)}`, exact: true }).click(); await page.getByRole('button', { name: 'Confirmer la révocation' }).click();
-    await expect(page.getByRole('status')).toContainText('Session révoquée'); expect((await second.get(`${apiUrl}/api/projects`)).status()).toBe(401);
+    await expect(page.getByRole('status').filter({ hasText: 'Session révoquée' })).toBeVisible(); expect((await second.get(`${apiUrl}/api/projects`)).status()).toBe(401);
     await page.getByRole('button', { name: 'Fermer toutes les sessions' }).click(); await page.getByRole('button', { name: 'Confirmer la révocation' }).click();
     await expect(page).toHaveURL(/\/login\?logout=all$/); await expect(page.getByRole('status')).toContainText('Toutes les sessions ont été fermées');
   } finally { await second.dispose(); }

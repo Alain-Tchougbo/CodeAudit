@@ -421,3 +421,10 @@ Lint et typage Vue finaux, builds, validation Prisma, configuration Compose et
 pnpm audit --prod réussis. Les suites PostgreSQL et Chromium sont relancées après
 la correction SMTP ; leurs résultats définitifs seront inscrits ci-dessous.
 SMTP/TLS de production, délivrabilité, MFA et audit externe non vérifiés.
+
+Résultats après correction SMTP : 111/111 tests d'intégration PostgreSQL réels
+réussis (297 secondes). Première passe Chromium : 12 succès et un échec de
+sélecteur ambigu entre chargement et confirmation ; même échec en CI, sans fusion.
+Sélecteur précisé par son texte, puis suite Chromium complète : 13/13 réussis
+(1,4 minute), dont récupération via vrai SMTP, ancien cookie refusé, révocation
+d'un autre appareil puis de toutes les sessions. Traces .tmp/recovery-*.log.
