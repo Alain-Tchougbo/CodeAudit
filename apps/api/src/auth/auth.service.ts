@@ -1,7 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { ConflictException, ForbiddenException, HttpException, Injectable, UnauthorizedException, type OnModuleInit } from '@nestjs/common';
+import { ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException, UnauthorizedException, type OnModuleInit } from '@nestjs/common';
 import { Prisma } from '@codeaudit/database';
-import type { AuthProfile } from '@codeaudit/contracts';
+import type { ActiveSession, AuthProfile } from '@codeaudit/contracts';
 import { PrismaService } from '../database/prisma.service';
 import type { AuthRequest, CookieResponse } from './auth.types';
 import type { LoginDto, RegisterDto } from './auth.dto';
@@ -47,9 +47,9 @@ export class AuthService implements OnModuleInit {
     const actual = request.headers['x-csrf-token']; const expected = csrf(token);
     if (typeof actual !== 'string' || !/^[a-f0-9]{64}$/.test(actual) || !timingSafeEqual(Buffer.from(actual, 'hex'), Buffer.from(expected, 'hex'))) throw new ForbiddenException({ code: 'CSRF_INVALID', message: 'Protection de session invalide. Rechargez la page.' });
   }
-  async limit(request: AuthRequest, operation: 'login' | 'register', email: string) {
+  async limit(request: AuthRequest, operation: 'login' | 'register' | 'reset', email: string) {
     const ip = (request.socket.remoteAddress ?? 'unknown').replace(/^::ffff:/, '').replace(/^::1$/, '127.0.0.1');
-    for (const [kind, value, limit] of [['ip', ip, operation === 'login' ? 30 : 10], ['email', email, 10]] as const) {
+    for (const [kind, value, limit] of [['ip', ip, operation === 'login' ? 30 : 10], ['email', email, operation === 'reset' ? 3 : 10]] as const) {
       const key = throttleKey(operation, kind, value);
       const accepted = await this.database.client.$executeRaw(Prisma.sql`
         INSERT INTO "AuthThrottle" ("keyHash", count, "windowStart") VALUES (${key}, 1, clock_timestamp())
@@ -112,4 +112,16 @@ export class AuthService implements OnModuleInit {
     }
     this.clearCookie(response);
   }
+  async sessions(userId: string, request: AuthRequest): Promise<ActiveSession[]> {
+    const token = sessionToken(request); const now = new Date();
+    const rows = await this.database.client.session.findMany({ where: { userId, expiresAt: { gt: now }, lastSeenAt: { gt: new Date(now.getTime() - IDLE_MS) } }, orderBy: [{ lastSeenAt: 'desc' }, { id: 'desc' }], take: 100 });
+    return rows.map(row => ({ id: row.id, current: !!token && row.tokenHash === digest(token), createdAt: row.createdAt.toISOString(), lastSeenAt: row.lastSeenAt.toISOString(), expiresAt: row.expiresAt.toISOString() }));
+  }
+  async revoke(userId: string, id: string, request: AuthRequest, response: CookieResponse) {
+    const row = await this.database.client.session.findFirst({ where: { id, userId }, select: { tokenHash: true } });
+    if (!row) throw new NotFoundException({ code: 'SESSION_NOT_FOUND', message: 'Session introuvable.' });
+    await this.database.client.session.deleteMany({ where: { id, userId } });
+    const token = sessionToken(request); if (token && row.tokenHash === digest(token)) this.clearCookie(response);
+  }
+  async logoutAll(userId: string, response: CookieResponse) { await this.database.client.session.deleteMany({ where: { userId } }); this.clearCookie(response); }
 }

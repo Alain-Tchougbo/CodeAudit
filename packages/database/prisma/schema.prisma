@@ -32,9 +32,11 @@ model User {
   createdAt    DateTime  @default(now()) @db.Timestamptz(3)
   projects     Project[]
   sessions     Session[]
+  resetToken   PasswordResetToken?
 }
 
 model Session {
+  id         String   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tokenHash  String   @id @db.Char(64)
   userId     String   @db.Uuid
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -42,6 +44,16 @@ model Session {
   lastSeenAt DateTime @default(now()) @db.Timestamptz(3)
   expiresAt  DateTime @db.Timestamptz(3)
   @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @unique @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique @db.Char(64)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
   @@index([expiresAt])
 }
 

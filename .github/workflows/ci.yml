@@ -13,6 +13,8 @@ jobs:
       POSTGRES_DB: codeaudit_test
       DATABASE_URL: postgresql://codeaudit:codeaudit@127.0.0.1:5432/codeaudit_test?schema=public
       TEST_DATABASE_URL: postgresql://codeaudit:codeaudit@127.0.0.1:5432/codeaudit_test?schema=public
+      TEST_SMTP_PORT: '1026'
+      TEST_MAILPIT_API_URL: http://127.0.0.1:8026
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -27,6 +29,7 @@ jobs:
       - run: pnpm check
       - run: docker compose config --quiet
       - run: pnpm db:up
+      - run: pnpm mail:up
       - run: pnpm db:migrate
       - run: pnpm db:check
       - run: pnpm test:integration
