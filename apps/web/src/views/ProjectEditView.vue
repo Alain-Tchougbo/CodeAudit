@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import AppIcon from '../components/AppIcon.vue';
+import ResourceState from '../components/ResourceState.vue';
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { CreateProjectRequest } from '@codeaudit/contracts';
@@ -31,45 +33,48 @@ async function save(input: CreateProjectRequest): Promise<void> {
   <section>
     <RouterLink
       :to="`/projects/${route.params.id}`"
-      class="underline"
-    >Retour au projet</RouterLink>
-    <h1 class="mb-6 mt-5 text-3xl font-bold">
-      Modifier le projet
-    </h1>
-    <p
-      v-if="loading"
-      role="status"
-    >
-      Chargement du projet…
-    </p>
-    <div
-      v-else-if="error"
-      role="alert"
-      class="text-red-700"
-    >
-      <p>{{ error }}</p>
-      <button
-        class="mt-3 underline"
-        @click="reload"
-      >
-        Réessayer
-      </button>
+      class="back-link"
+    ><AppIcon
+      name="back"
+      :size="16"
+    />Retour au projet</RouterLink>
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">
+          Informations du projet
+        </p><h1>Modifier le projet</h1><p class="page-description">
+          Gardez un nom et une description qui parlent à votre futur vous.
+        </p>
+      </div>
     </div>
-    <template v-else-if="project">
-      <p
-        v-if="saveError"
-        role="alert"
-        class="mb-5 text-red-700"
-      >
-        {{ saveError }}
-      </p>
-      <ProjectForm
-        :key="project.id"
-        :initial-project="project"
-        :busy="saving"
-        submit-label="Enregistrer les modifications"
-        @submit="save"
-      />
-    </template>
+    <ResourceState
+      :loading="loading"
+      :error="error"
+      @retry="reload"
+    />
+    <div
+      v-if="project && !loading && !error"
+      class="form-layout"
+    >
+      <div class="panel">
+        <p
+          v-if="saveError"
+          role="alert"
+          class="notice notice-error"
+        >
+          {{ saveError }}
+        </p><ProjectForm
+          :key="project.id"
+          :initial-project="project"
+          :busy="saving"
+          submit-label="Enregistrer les modifications"
+          @submit="save"
+        />
+      </div><aside class="form-aside">
+        <h2 class="mb-3 font-semibold text-slate-800">
+          Un historique préservé
+        </h2><p>La modification des informations du projet ne réécrit pas les rapports existants. Chaque analyse conserve les informations enregistrées à sa création.</p>
+      </aside>
+    </div>
   </section>
 </template>

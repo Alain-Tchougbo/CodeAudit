@@ -58,7 +58,7 @@ test('explique une ressource absente depuis une URL directe', async ({ page }) =
   await expect(page.getByRole('link', { name: 'Retour aux projets' })).toBeVisible();
 });
 
-test('consulte un véritable rapport depuis le tableau de bord, filtre et pagine sur mobile', async ({ page, request }) => {
+test('consulte un véritable rapport depuis le tableau de bord, filtre et pagine sur mobile', async ({ page, request }, testInfo) => {
   const name = `Audit E2E ${randomUUID()}`;
   const project = await request.post(`${apiUrl}/api/projects`, { data: { name } });
   expect(project.status()).toBe(201);
@@ -75,6 +75,7 @@ test('consulte un véritable rapport depuis le tableau de bord, filtre et pagine
     await page.getByRole('link', { name: new RegExp(name) }).click();
     await expect(page.getByRole('heading', { name: 'Détail de l’analyse' })).toBeVisible();
     await expect(page.locator('tbody tr')).toHaveCount(20);
+    await testInfo.attach('analysis-desktop', { body: await page.screenshot({ fullPage: true, animations: 'disabled' }), contentType: 'image/png' });
     await page.getByLabel('Gravité', { exact: true }).selectOption('warning');
     await page.getByLabel('Règle ESLint', { exact: true }).selectOption('no-console');
     await expect(page.locator('tbody tr')).toHaveCount(1);
@@ -99,6 +100,11 @@ test('consulte un véritable rapport depuis le tableau de bord, filtre et pagine
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: '.tmp/analysis-results-mobile.png', fullPage: true });
+    await testInfo.attach('analysis-mobile', { body: await page.screenshot({ fullPage: true, animations: 'disabled' }), contentType: 'image/png' });
+    for (const width of [768, 320]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    }
     await page.getByRole('link', { name: 'Voir le projet et son historique' }).click();
     await expect(page.getByRole('heading', { name: 'Historique des analyses' })).toBeVisible();
     await expect(page.locator(`a[href="/analyses/${id}"]`)).toBeVisible();

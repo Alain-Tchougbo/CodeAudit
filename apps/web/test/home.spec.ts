@@ -48,6 +48,16 @@ afterEach(() => {
 });
 
 describe('Liste des projets', () => {
+  it('recherche dans le nom et la description sans nouvel appel API et permet de réinitialiser', async () => {
+    vi.mocked(projectsApi.list).mockResolvedValue([project, { ...project, id: 'second', name: 'Autre application', description: 'Service de facturation' }]);
+    const { wrapper } = await screen(); await flushPromises();
+    await wrapper.get('#project-search').setValue(' FACTURATION ');
+    expect(wrapper.findAll('li')).toHaveLength(1); expect(wrapper.text()).toContain('Autre application');
+    await wrapper.get('#project-search').setValue('introuvable');
+    expect(wrapper.text()).toContain('Aucun projet ne correspond'); expect(wrapper.findAll('li')).toHaveLength(0);
+    await wrapper.get('button').trigger('click');
+    expect(wrapper.findAll('li')).toHaveLength(2); expect(projectsApi.list).toHaveBeenCalledTimes(1);
+  });
   it('affiche le chargement puis uniquement les données reçues', async () => {
     let resolve!: (value: Project[]) => void;
     vi.mocked(projectsApi.list).mockReturnValue(new Promise((done) => { resolve = done; }));

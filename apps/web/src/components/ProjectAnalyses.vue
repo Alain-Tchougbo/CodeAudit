@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import AppIcon from './AppIcon.vue';
+import EmptyState from './EmptyState.vue';
 import { ref, watch } from 'vue';
 import { analysesApi } from '../api/analyses';
 import { useResource } from '../composables/useResource';
@@ -14,22 +16,25 @@ function back() { cursor.value = previous.value.pop(); }
 </script>
 <template>
   <section
-    class="mt-10 border-t border-slate-200 pt-8"
+    class="mt-10"
     aria-labelledby="history-title"
   >
-    <div class="mb-5 flex items-center justify-between gap-3">
-      <h2
-        id="history-title"
-        class="text-xl font-semibold"
-      >
-        Historique des analyses
-      </h2>
-      <button
+    <div class="section-heading">
+      <div>
+        <h2 id="history-title">
+          Historique des analyses
+        </h2><p class="mt-2 text-xs text-slate-500">
+          Retrouvez chaque exécution et les résultats qui lui sont propres.
+        </p>
+      </div><button
         class="button-secondary"
         :disabled="loading"
         @click="reload"
       >
-        Actualiser l’historique
+        <AppIcon
+          name="refresh"
+          :size="16"
+        />Actualiser l’historique
       </button>
     </div>
     <ResourceState
@@ -38,17 +43,17 @@ function back() { cursor.value = previous.value.pop(); }
       @retry="reload"
     />
     <template v-if="data && !loading && !error">
-      <p
-        v-if="!data.items.length"
-        class="panel text-slate-600"
-      >
-        Aucune analyse pour ce projet.
-      </p>
-      <div
-        v-else
-        class="overflow-hidden rounded-xl border border-slate-200 bg-white"
-      >
-        <AnalysisList :analyses="data.items" />
+      <div class="table-surface">
+        <EmptyState
+          v-if="!data.items.length"
+          icon="file"
+          title="Aucune analyse pour ce projet."
+          description="Importez une archive ci-dessus pour démarrer. Chaque analyse apparaîtra ici avec son état et sa durée."
+        /><template v-else>
+          <div class="flex justify-between border-b border-[#dfe5df] bg-[#f9faf7] px-5 py-3 font-mono text-[10px] tracking-wider text-slate-500">
+            <span>ANALYSE / DATE</span><span>RÉSULTAT / ÉTAT</span>
+          </div><AnalysisList :analyses="data.items" />
+        </template>
       </div>
       <nav
         v-if="previous.length || data.nextCursor"
@@ -60,15 +65,19 @@ function back() { cursor.value = previous.value.pop(); }
           :disabled="!previous.length"
           @click="back"
         >
-          Précédent
-        </button>
-        <span class="text-sm text-slate-600">Page {{ previous.length + 1 }}</span>
-        <button
+          <AppIcon
+            name="back"
+            :size="15"
+          />Précédent
+        </button><span class="text-xs text-slate-600">Page {{ previous.length + 1 }}</span><button
           class="button-secondary"
           :disabled="!data.nextCursor"
           @click="next"
         >
-          Suivant
+          Suivant<AppIcon
+            name="arrow"
+            :size="15"
+          />
         </button>
       </nav>
     </template>

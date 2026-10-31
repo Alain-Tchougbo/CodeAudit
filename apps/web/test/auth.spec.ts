@@ -12,6 +12,11 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 beforeEach(async () => { clearSession(); authState.error.value = ''; localStorage.clear(); sessionStorage.clear(); vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(json({ code: 'AUTH_REQUIRED', message: 'Connectez-vous.' }, 401)))); await router.push('/login'); });
 afterEach(() => { wrappers.splice(0).forEach((wrapper) => wrapper.unmount()); clearSession(); vi.unstubAllGlobals(); });
 describe('Authentification Vue', () => {
+  it('efface une erreur réseau ancienne lorsque le serveur confirme la fin de session', () => {
+    authState.error.value = 'Serveur temporairement indisponible.';
+    clearSession();
+    expect(authState.error.value).toBe('');
+  });
   it('protege une URL directe et conserve une destination interne', async () => {
     authState.ready.value = false; await router.push('/projects/private');
     expect(router.currentRoute.value.name).toBe('login'); expect(router.currentRoute.value.query.redirect).toBe('/projects/private');
@@ -38,6 +43,19 @@ describe('Authentification Vue', () => {
     resolve(json({ code: 'EMAIL_ALREADY_USED', message: 'Cette adresse e-mail est déjà utilisée.' }, 409)); await flushPromises();
     expect(wrapper.get('[role="alert"]').text()).toContain('déjà utilisée'); expect(authState.user.value).toBeNull();
     await router.push('/login'); expect(wrapper.get('#auth-password').element).toHaveProperty('value', '');
+  });
+  it('permet de révéler le mot de passe sans perdre sa valeur et le masque au changement de formulaire', async () => {
+    await router.push('/login');
+    const wrapper = mount(AuthView, { global: { plugins: [router] } }); wrappers.push(wrapper);
+    await wrapper.get('#auth-password').setValue('A long passphrase 2026!');
+    expect(wrapper.get('#auth-password').attributes('type')).toBe('password');
+    await wrapper.get('button[type="button"]').trigger('click');
+    expect(wrapper.get('#auth-password').attributes('type')).toBe('text');
+    expect(wrapper.get('button[type="button"]').attributes('aria-pressed')).toBe('true');
+    expect(wrapper.get('#auth-password').element).toHaveProperty('value', 'A long passphrase 2026!');
+    await router.push('/register');
+    expect(wrapper.get('#auth-password').attributes('type')).toBe('password');
+    expect(wrapper.get('#auth-password').element).toHaveProperty('value', '');
   });
   it('transmet CSRF sur les mutations et garde le cookie hors du code JavaScript', async () => {
     acceptProfile(profile); vi.mocked(fetch).mockResolvedValueOnce(json({}));

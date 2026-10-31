@@ -80,6 +80,12 @@ Ces étapes nécessitent un compte connecté. Le menu « Mon profil » affiche l
 profil courant ; « Se déconnecter » révoque la session en base et efface son cookie.
 Voir [l'authentification, les limites et la migration](docs/authentication.md).
 
+L'interface partage un système de styles dans apps/web/src/style.css : navigation
+adaptée aux petits écrans, recherche locale des projets, diagnostics lisibles en
+fiches sur téléphone et confirmations utilisables au clavier. Les captures des
+tests d'interface sont jointes au rapport Playwright (`pnpm exec playwright show-report`)
+et aux artefacts de la CI. Elles utilisent les réponses réelles de l'API de test.
+
 Pour préparer un petit ZIP depuis PowerShell, créer un dossier contenant un fichier
 `index.js` avec `missing;` et `console.log('demo');`, puis utiliser
 `Compress-Archive -Path chemin/du/dossier/* -DestinationPath demo.zip`.

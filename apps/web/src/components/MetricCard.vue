@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { number } from '../format';
-defineProps<{ label: string; value: number; description?: string }>();
+withDefaults(defineProps<{ label: string; value: number; description?: string; tone?: 'default' | 'error' | 'warning' | 'success' }>(), { tone: 'default', description: '' });
 </script>
 <template>
-  <div class="panel">
-    <dt class="text-sm font-medium text-slate-600">
-      {{ label }}
-    </dt>
-    <dd class="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+  <div class="metric">
+    <dt>{{ label }}</dt><dd
+      class="metric-value"
+      :class="{ 'text-[#aa342c]': tone === 'error', 'text-[#85591b]': tone === 'warning', 'text-[#286344]': tone === 'success' }"
+    >
       {{ number(value) }}
-    </dd>
-    <dd
+    </dd><dd
       v-if="description"
-      class="mt-2 text-sm text-slate-500"
+      class="metric-note"
     >
       {{ description }}
     </dd>
