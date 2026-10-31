@@ -40,8 +40,11 @@ Un répertoire de travail distinct est réservé à chaque analyse.
 ## Modèle et états prévus
 
 User : profil, adresse unique normalisée, hash scrypt ; sessions persistées et quotas.
-Project : identifiant, nom, description, dates et propriétaire ; anciens projets
+Project : identifiant, nom, description, dates, propriétaire et équipe facultative ; anciens projets
 non attribués invisibles. Voir docs/authentication.md pour les contrôles et la migration.
+Team, TeamMember et TeamInvitation : rôles ADMIN/MEMBER/READER, adhésion courante
+et lien e-mail à usage unique. Pour un projet partagé, les droits reposent sur
+l'adhésion plutôt que sur le créateur historique. Voir [les équipes](teams.md).
 Analysis : projet, état, horodatages, empreinte des sources, profil et versions
 du moteur, compteurs, erreur technique, réservation et référence temporaire.
 Les diagnostics sont inclus dans le rapport JSONB de l'analyse : chemin relatif,
@@ -49,7 +52,7 @@ ligne et colonne facultatives, règle nullable, gravité, message et erreur de p
 Les nouvelles tentatives ont des identifiants distincts, sans lien dédié en MVP.
 
 États : QUEUED → RUNNING → SUCCEEDED ou FAILED ; QUEUED/RUNNING peuvent aussi
-aboutir à CANCELLED sur demande explicite du propriétaire.
+aboutir à CANCELLED sur demande explicite d'un utilisateur disposant du droit d'écriture.
 Une analyse terminée avec des problèmes de code est SUCCEEDED.
 Une erreur de syntaxe est un diagnostic ; un délai dépassé ou un crash est un échec technique.
 Une nouvelle tentative produit une nouvelle analyse ; les résultats terminaux sont immuables.

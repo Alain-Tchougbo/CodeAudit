@@ -27,7 +27,9 @@ async function switchAccount() {
   <section class="mx-auto max-w-xl px-5 py-12">
     <p class="eyebrow">
       Collaborer
-    </p><h1>Rejoindre une équipe</h1>
+    </p><h1 class="page-title">
+      Rejoindre une équipe
+    </h1>
     <p
       v-if="!token"
       role="alert"

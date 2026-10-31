@@ -119,6 +119,14 @@ export et tableau de bord, pas seulement aux routes Vue. Une ressource étrangè
 renvoie 404 sans révéler si cet identifiant existe. Le worker traite la file interne
 avec ses accès de service et n'expose pas d'endpoint HTTP utilisateur.
 
+La migration 20261031000800_teams complète ce modèle par un partage explicite.
+Un projet personnel reste limité à son propriétaire ; un projet partagé exige une
+adhésion actuelle à son équipe. Même le créateur historique perd l'accès après
+retrait. Les rôles distinguent lecture, écriture et administration et sont vérifiés
+côté API à chaque requête, y compris pour les clés CI. Les invitations ne font pas
+confiance à l'adresse inscrite seule : elles exigent l'acceptation du lien reçu par
+e-mail avec un compte correspondant. Voir [la matrice des droits](teams.md).
+
 Les projets préexistants conservent ownerId=NULL et sont invisibles à tous les
 comptes. Ils ne sont jamais attribués au premier inscrit. La base locale comptait
 zéro projet lors de l'examen initial. Pour une autre base existante, un administrateur

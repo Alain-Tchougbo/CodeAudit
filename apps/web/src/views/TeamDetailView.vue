@@ -38,7 +38,7 @@ async function change(remove = false) {
           </p><h1 class="break-words">
             {{ data.team.name }}
           </h1><p class="page-description">
-            {{ data.team.memberCount }} membres · {{ data.team.projectCount }} projets partagés
+            {{ data.team.memberCount }} membre{{ data.team.memberCount > 1 ? 's' : '' }} · {{ data.team.projectCount }} projet{{ data.team.projectCount > 1 ? 's' : '' }} partagé{{ data.team.projectCount > 1 ? 's' : '' }}
           </p>
         </div><button
           class="button-secondary"

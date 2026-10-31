@@ -13,7 +13,7 @@ POST /api/projects/:projectId/analyses/github accepte un JSON :
 ```
 
 Remplacer `ref` par `pullRequest: 12` pour une PR ; les deux sont exclusifs.
-L'API exige session propriétaire et CSRF. Les champs inconnus, URL complètes,
+L'API exige une session avec droit d'écriture sur le projet et le CSRF. Les champs inconnus, URL complètes,
 jetons fournisseur et valeurs nulles sont refusés. La propriété est contrôlée
 avant le réseau puis avant l'import. Aucun accès privé ou secret Git n'est stocké.
 

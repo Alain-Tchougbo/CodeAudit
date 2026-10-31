@@ -629,3 +629,28 @@ du test borné et effectué aussi en cas d'échec. Le parcours isolé a réussi 
 403 du lecteur en HTTP direct, changement de rôle, retrait et 404 du rapport après
 retrait, refus du départ du dernier administrateur. Débordement horizontal absent
 aux largeurs 1440, 390 et 320 pixels. Aucune donnée fonctionnelle fictive ajoutée.
+
+### Vérifications finales du lot 8
+
+Les onze suites PostgreSQL exécutées localement dans des processus distincts ont
+toutes réussi : 157/157 tests, dont les 17 cas d'équipes. Le nouveau cas confirme
+que le worker peut terminer un travail même si sa réponse HTTP initiale échoue
+après mise en file. Le parcours Chromium complet local a réussi 18/18 tests en
+2,3 minutes. La CI Linux 41195267918 sur f4952b9 a réussi l'installation figée,
+l'audit de production, pnpm check, Compose, migrations et comparaison du schéma,
+les onze suites PostgreSQL regroupées (157/157), puis Chromium (18/18). Les contrôles
+check et pr-policy de la PR 14 sont verts pour ce commit. La mise à jour finale de
+documentation et les deux retouches de présentation nécessitent les contrôles de
+leur propre commit avant fusion, sans contourner la protection.
+
+Documentation harmonisée : README, spécification, authentification, Git, CI et
+nouvelle matrice des droits dans docs/teams.md. Retouches finales : hiérarchie du
+titre d'invitation et pluriels des compteurs ; lint racine et typage Vue relancés
+avec succès. Aucune dépendance externe ajoutée au lot 8.
+
+Une boîte Mailpit locale distincte a été démarrée pour la démonstration : SMTP
+127.0.0.1:1027 et interface http://127.0.0.1:8027, sans livraison externe. Les variables
+SMTP et ports ont été ajoutées au seul .env ignoré, en conservant les identifiants
+et le port de la base existante. La boîte de test reste sur 1026/8026. Aucun secret
+n'a été ajouté à Git. Le lancement documenté reste local, sans validation de
+déploiement public HTTPS, de messagerie externe ou de sécurité de production.
