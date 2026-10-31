@@ -49,6 +49,7 @@ export interface AnalysisSummary {
   startedAt: string | null;
   finishedAt: string | null;
   profileVersion: string | null;
+  source?: GitSource | null;
   projectSnapshot?: ProjectSnapshot | null;
   error: { code: string; message: string } | null;
   statistics: {
@@ -143,3 +144,14 @@ export interface Dashboard {
   warningCount: number;
   latestAnalyses: (AnalysisSummary & { projectName: string })[];
 }
+
+export interface GitSource {
+  schemaVersion: 1;
+  provider: 'GITHUB';
+  repository: string;
+  archiveRepository: string;
+  requestedRef: string;
+  commitSha: string;
+  pullRequest: number | null;
+}
+export interface GitImportRequest { repository: string; ref?: string; pullRequest?: number; captureContext?: boolean }

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Prisma, type PrismaClient } from '@codeaudit/database';
 import { ANALYSIS_PROFILE_VERSION, getAnalysisProfile, type AnalysisReport } from '@codeaudit/analyzer';
-import type { CodeContext } from '@codeaudit/contracts';
+import type { CodeContext, GitSource } from '@codeaudit/contracts';
 import { CONTEXT_LIMITS } from './code-context';
 import { EXECUTION_LIMITS, JobError } from './limits';
 import type { SourceStore } from './storage';
@@ -21,12 +21,13 @@ export interface ReservationOptions { leaseMs?: number; analysisMs?: number }
 export class AnalysisQueue {
   constructor(readonly client: PrismaClient) {}
 
-  async enqueue(projectId: string, sources: { key: string; digest: string }, options: { captureContext?: boolean } = {}) {
+  async enqueue(projectId: string, sources: { key: string; digest: string }, options: { captureContext?: boolean; gitSource?: GitSource } = {}) {
     return this.client.$transaction(async (transaction) => {
       const project = await transaction.project.findUniqueOrThrow({ where: { id: projectId } });
       getAnalysisProfile(project.analysisProfileVersion);
       return transaction.analysis.create({ data: {
         profileVersion: project.analysisProfileVersion,
+        sourceMetadata: options.gitSource ? { ...options.gitSource } : Prisma.DbNull,
         projectId, sourceKey: sources.key, sourceDigest: sources.digest, captureContext: options.captureContext ?? false,
         projectSnapshot: { id: project.id, name: project.name, description: project.description, createdAt: project.createdAt.toISOString(), updatedAt: project.updatedAt.toISOString(),
           capturedAt: new Date().toISOString(), origin: 'ANALYSIS_REQUEST' },
