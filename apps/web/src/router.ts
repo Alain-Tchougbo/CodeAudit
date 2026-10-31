@@ -9,12 +9,18 @@ import AuthView from './views/AuthView.vue';
 import ProfileView from './views/ProfileView.vue';
 import AnalysisComparisonView from './views/AnalysisComparisonView.vue';
 import AccountRecoveryView from './views/AccountRecoveryView.vue';
+import TeamsListView from './views/TeamsListView.vue';
+import TeamDetailView from './views/TeamDetailView.vue';
+import TeamInvitationView from './views/TeamInvitationView.vue';
 import { restoreSession } from './auth';
 import { authState } from './auth-state';
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
+    { path: '/teams', name: 'teams', component: TeamsListView },
+    { path: '/teams/:id', name: 'team-detail', component: TeamDetailView },
+    { path: '/team-invitation', name: 'team-invitation', component: TeamInvitationView, meta: { public: true, allowAuthenticated: true } },
     { path: '/login', name: 'login', component: AuthView, meta: { public: true } },
     { path: '/register', name: 'register', component: AuthView, meta: { public: true } },
     { path: '/forgot-password', name: 'forgot-password', component: AccountRecoveryView, meta: { public: true, allowAuthenticated: true } },

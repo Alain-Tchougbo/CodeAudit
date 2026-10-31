@@ -47,9 +47,9 @@ export class AuthService implements OnModuleInit {
     const actual = request.headers['x-csrf-token']; const expected = csrf(token);
     if (typeof actual !== 'string' || !/^[a-f0-9]{64}$/.test(actual) || !timingSafeEqual(Buffer.from(actual, 'hex'), Buffer.from(expected, 'hex'))) throw new ForbiddenException({ code: 'CSRF_INVALID', message: 'Protection de session invalide. Rechargez la page.' });
   }
-  async limit(request: AuthRequest, operation: 'login' | 'register' | 'reset', email: string) {
+  async limit(request: AuthRequest, operation: 'login' | 'register' | 'reset' | 'invite', email: string) {
     const ip = (request.socket.remoteAddress ?? 'unknown').replace(/^::ffff:/, '').replace(/^::1$/, '127.0.0.1');
-    for (const [kind, value, limit] of [['ip', ip, operation === 'login' ? 30 : 10], ['email', email, operation === 'reset' ? 3 : 10]] as const) {
+    for (const [kind, value, limit] of [['ip', ip, operation === 'login' ? 30 : 10], ['email', email, operation === 'reset' || operation === 'invite' ? 3 : 10]] as const) {
       const key = throttleKey(operation, kind, value);
       const accepted = await this.database.client.$executeRaw(Prisma.sql`
         INSERT INTO "AuthThrottle" ("keyHash", count, "windowStart") VALUES (${key}, 1, clock_timestamp())

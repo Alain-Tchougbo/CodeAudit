@@ -4,12 +4,12 @@ import type { QualityPolicy } from '@codeaudit/contracts';
 import { apiJson } from '../api/http';
 import { useResource } from '../composables/useResource';
 import ResourceState from './ResourceState.vue';
-const props = defineProps<{ projectId: string }>();
+const props = withDefaults(defineProps<{ projectId: string; canEdit?: boolean }>(), { canEdit: true });
 const { data, loading, error, reload } = useResource(signal => apiJson<{ policy: QualityPolicy | null }>(`/projects/${encodeURIComponent(props.projectId)}/quality-policy`, { signal }), () => props.projectId);
 const enabled = ref(false); const errors = ref(0); const warnings = ref(0); const busy = ref(false); const feedback = ref(''); const actionError = ref('');
 watch(data, value => { enabled.value = value?.policy?.enabled ?? false; errors.value = value?.policy?.maxErrors ?? 0; warnings.value = value?.policy?.maxWarnings ?? 0; });
 async function save() {
-  if (busy.value) return; busy.value = true; feedback.value = ''; actionError.value = ''; const id = props.projectId;
+  if (busy.value || !props.canEdit) return; busy.value = true; feedback.value = ''; actionError.value = ''; const id = props.projectId;
   try { const result = await apiJson<{ policy: QualityPolicy }>(`/projects/${encodeURIComponent(id)}/quality-policy`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: enabled.value, maxErrors: errors.value, maxWarnings: warnings.value }) });
     if (id === props.projectId) { data.value = result; feedback.value = 'Seuils enregistrés pour les prochaines analyses.'; }
   } catch (cause) { if (id === props.projectId) actionError.value = cause instanceof Error ? cause.message : 'Enregistrement impossible.'; }
@@ -43,7 +43,7 @@ async function save() {
         @submit.prevent="save"
       >
         <fieldset
-          :disabled="busy"
+          :disabled="busy || !canEdit"
           class="space-y-5"
         >
           <label class="flex items-center gap-3 text-sm"><input

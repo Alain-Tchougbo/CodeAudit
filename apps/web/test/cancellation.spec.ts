@@ -4,7 +4,7 @@ import type { AnalysisSummary } from '@codeaudit/contracts';
 import CancelAnalysis from '../src/components/CancelAnalysis.vue';
 import { analysesApi } from '../src/api/analyses';
 vi.mock('../src/api/analyses', () => ({ analysesApi: { cancel: vi.fn() } }));
-const analysis: AnalysisSummary = { id: 'analysis', projectId: 'project', status: 'RUNNING', createdAt: '2026-10-31T08:00:00Z', startedAt: '2026-10-31T08:00:01Z', finishedAt: null, error: null, profileVersion: 'v1', statistics: null };
+const analysis: AnalysisSummary = { permissions: { write: true, admin: true }, id: 'analysis', projectId: 'project', status: 'RUNNING', createdAt: '2026-10-31T08:00:00Z', startedAt: '2026-10-31T08:00:01Z', finishedAt: null, error: null, profileVersion: 'v1', statistics: null };
 beforeEach(() => { vi.mocked(analysesApi.cancel).mockReset(); }); afterEach(() => vi.restoreAllMocks());
 describe('Annulation d’une analyse', () => {
   it('demande confirmation puis transmet l’identifiant à l’API sans annoncer une fin prématurée', async () => {

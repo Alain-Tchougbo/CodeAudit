@@ -559,3 +559,110 @@ explicite d'analyses d'un autre projet du même compte ajoutés aux tests ; lint
 typage outils/API finaux réussis après cette correction. Suites PostgreSQL et
 Chromium complètes en cours. Aucun runner externe ni déploiement public HTTPS
 configuré ou revendiqué. Aucune dépendance externe ajoutée.
+
+### Résultats finaux du lot 7
+
+Le processus Windows regroupant les suites PostgreSQL s'est terminé avec le code
+natif -1073740791 sans résumé Jest ; la cause n'a pas été établie et cette tentative
+n'est pas comptée comme réussie. Après vérification des processus et des seuls
+résidus synthétiques de la base dédiée `_test`, nettoyage contrôlé des fixtures
+abandonnées, puis exécution des dix suites dans dix processus distincts : 140/140
+tests PostgreSQL réussis. Chromium local : 17/17 parcours réussis. La CI Linux
+41192282973 a aussi validé la suite regroupée complète et Playwright. PR 13 fusionnée
+par squash sur staging da27246, après réussite de check et pr-policy.
+
+## 31 octobre 2026 — collaboration en équipe, lot 8
+
+Branche feat/team-collaboration depuis staging da27246. Migration
+20261031000800_teams appliquée aux bases locale et de test ; génération Prisma
+réussie. Ajout d'équipes, adhésions ADMIN/MEMBER/READER, invitations et rattachement
+explicite d'un projet personnel. Aucun projet existant partagé automatiquement.
+La relation projet/équipe interdit la suppression d'une équipe contenant des projets.
+
+Scopes de lecture, écriture et administration centralisés, appliqués à tous les
+endpoints projet/analyse, aux clés CI et au tableau de bord, y compris sa requête SQL.
+Les droits d'un projet partagé reposent exclusivement sur l'adhésion actuelle :
+le créateur retiré n'a pas de passe-droit via ownerId. Les permissions Vue viennent
+de l'API et masquent les mutations au lecteur ; l'API refuse aussi les appels directs.
+Le partage révoque les clés du projet, et un changement de rôle ou retrait révoque
+les clés de la personne concernée et ses invitations encore en attente.
+
+L'inscription ne validant pas généralement la boîte e-mail, une adresse inscrite
+n'est jamais ajoutée automatiquement comme membre. Un véritable message SMTP
+transmet un jeton aléatoire de 32 octets, dont seul le SHA-256 est stocké, valable
+sept jours et consommé une seule fois avec un compte correspondant à l'adresse.
+Renvoi, révocation, expiration, quotas et échec SMTP explicite. Le lien est dans un
+fragment ; la transition inscription/connexion ne le place ni en query ni en stockage
+persistant. Après rechargement pendant la connexion, rouvrir le lien reçu.
+Les transactions Serializable protègent le dernier administrateur et l'acceptation
+concurrente. Tests SMTP exclusivement vers des adresses synthétiques dans Mailpit.
+
+Interfaces Vue : équipes, détail/membres/invitations, confirmation du partage avec
+mention explicite de l'historique et des extraits, rôles, départ et retrait.
+Contrats Project et AnalysisSummary enrichis de permissions sans modifier les
+snapshots des anciens rapports. La revue a aussi corrigé un nettoyage trop large :
+si la présentation d'une réponse échoue après enqueue, les sources déjà confiées au
+worker sont conservées pour terminer le travail, puis nettoyées normalement.
+
+Premiers contrôles : 16/16 intégrations ciblées réussies avec PostgreSQL et SMTP
+réels ; le premier passage avait deux attentes incorrectes dans les nouveaux tests
+(champ version du profil et annulation HTTP 202), corrigées conformément aux
+contrats existants. `pnpm check` réussi : 261 tests (28 analyzer, 56 jobs, 58 API,
+119 Vue), lint sans avertissement, typage, builds et validation Prisma. Audit des
+dépendances de production sans vulnérabilité connue ; Compose valide. Vérifications
+PostgreSQL et Chromium finales encore à consigner après leurs résultats effectifs.
+
+Le processus regroupé PostgreSQL est resté actif sans progression visible dans la
+suite de comparaison sur ce poste Windows ; il a été arrêté après vérification de
+sa ligne de commande. Il n'est pas déclaré réussi et la cause reste à diagnostiquer.
+Une tentative a chevauché ce processus et un parcours navigateur sur la même base :
+ces exécutions ne servent pas de validation finale. Les fixtures synthétiques
+abandonnées ont été identifiées puis supprimées avec garde sur le nom de la base,
+les noms de projets et les adresses de test. Les reprises sont séquencées : Chromium,
+puis chaque suite PostgreSQL dans un processus distinct.
+
+Le nouveau parcours Chromium a ensuite révélé deux attentes incorrectes du test :
+le nom accessible du lien projet inclut sa description, et l'export enveloppe les
+compteurs dans report.statistics. Sélecteur et lecture du contrat corrigés, nettoyage
+du test borné et effectué aussi en cas d'échec. Le parcours isolé a réussi en
+17,8 secondes : création équipe, vrai rapport, partage, SMTP, inscription, acceptation,
+403 du lecteur en HTTP direct, changement de rôle, retrait et 404 du rapport après
+retrait, refus du départ du dernier administrateur. Débordement horizontal absent
+aux largeurs 1440, 390 et 320 pixels. Aucune donnée fonctionnelle fictive ajoutée.
+
+### Vérifications finales du lot 8
+
+Les onze suites PostgreSQL exécutées localement dans des processus distincts ont
+toutes réussi : 157/157 tests, dont les 17 cas d'équipes. Le nouveau cas confirme
+que le worker peut terminer un travail même si sa réponse HTTP initiale échoue
+après mise en file. Le parcours Chromium complet local a réussi 18/18 tests en
+2,3 minutes. La CI Linux 41195267918 sur f4952b9 a réussi l'installation figée,
+l'audit de production, pnpm check, Compose, migrations et comparaison du schéma,
+les onze suites PostgreSQL regroupées (157/157), puis Chromium (18/18). Les contrôles
+check et pr-policy de la PR 14 sont verts pour ce commit. La mise à jour finale de
+documentation et les deux retouches de présentation nécessitent les contrôles de
+leur propre commit avant fusion, sans contourner la protection.
+
+Documentation harmonisée : README, spécification, authentification, Git, CI et
+nouvelle matrice des droits dans docs/teams.md. Retouches finales : hiérarchie du
+titre d'invitation et pluriels des compteurs ; lint racine et typage Vue relancés
+avec succès. Aucune dépendance externe ajoutée au lot 8.
+
+Une boîte Mailpit locale distincte a été démarrée pour la démonstration : SMTP
+127.0.0.1:1027 et interface http://127.0.0.1:8027, sans livraison externe. Les variables
+SMTP et ports ont été ajoutées au seul .env ignoré, en conservant les identifiants
+et le port de la base existante. La boîte de test reste sur 1026/8026. Aucun secret
+n'a été ajouté à Git. Le lancement documenté reste local, sans validation de
+déploiement public HTTPS, de messagerie externe ou de sécurité de production.
+
+Vérification sur le serveur local relancé : HTTP 200 du frontend 5173, de l'API
+3000/health, du proxy /api/health et de Mailpit 8027 ; projets sans session : 401.
+`pnpm db:check` confirme l'absence de différence entre schéma local et Prisma.
+Chromium a ouvert l'inscription, vérifié la redirection protégée de /teams vers
+la connexion, puis le message de lien d'invitation incomplet, sans créer de compte
+dans la base de démonstration. L'inspection de la capture mobile a révélé un
+chevauchement du logo et du titre d'invitation : espacement supérieur et hauteur
+minimale corrigés, capture réexaminée. Le test Playwright d'équipes vérifie désormais
+les positions du titre et du logo et l'absence de débordement à 320, 390 et 1440 px.
+Lint, typage des outils puis parcours complet des équipes relancés : succès,
+1/1 test Chromium en 24,4 secondes, dont 16,4 secondes pour le parcours.

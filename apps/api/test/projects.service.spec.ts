@@ -15,7 +15,7 @@ describe('Suppression de projet', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
-    transaction.project.findUnique.mockResolvedValue({ id: 'project' });
+    transaction.project.findUnique.mockResolvedValue({ id: 'project', ownerId: 'owner', teamId: null, team: null });
     transaction.analysis.count.mockResolvedValue(0);
     transaction.project.delete.mockResolvedValue({});
     runTransaction.mockImplementation((work: (value: typeof transaction) => Promise<void>) => work(transaction));
@@ -35,7 +35,7 @@ describe('Suppression de projet', () => {
 
   it('supprime un projet sans analyse active en transaction sérialisable', async () => {
     await service.delete('project', 'owner');
-    expect(transaction.project.delete).toHaveBeenCalledWith({ where: { id: 'project', ownerId: 'owner' } });
+    expect(transaction.project.delete).toHaveBeenCalledWith({ where: { id: 'project', AND: { OR: [{ ownerId: 'owner', teamId: null }, { team: { members: { some: { userId: 'owner', role: 'ADMIN' } } } }] } } });
     expect(runTransaction).toHaveBeenCalledWith(expect.any(Function), {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });

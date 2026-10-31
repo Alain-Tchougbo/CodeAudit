@@ -6,11 +6,16 @@ Le formulaire de lancement ZIP est disponible dans la fiche projet.
 
 ## Objectif et périmètre
 
-Application d'audit statique JavaScript et TypeScript avec comptes et projets privés.
+Application d'audit statique JavaScript et TypeScript avec comptes, projets personnels
+et partage explicite en équipes avec rôles.
 Le MVP couvre les projets, l'import ZIP, les analyses asynchrones, les résultats
 détaillés, les indicateurs, l'historique et l'export JSON.
-Pas d'intégration Git, de correction automatique,
-d'exécution des sources ni d'installation des dépendances des projets importés.
+Les évolutions validées ajoutent comparaison, extraits facultatifs, récupération du
+compte et sessions, profils maîtrisés, annulation, imports GitHub publics, seuils
+qualité et CI, puis équipes. Les imports Git et équipes étendent le périmètre
+initial sans correction automatique, exécution des sources ni installation des
+dépendances des projets importés. Voir [import Git](git-import.md), [CI](ci.md)
+et [équipes et droits](teams.md) pour les contrats et limites.
 
 ## Architecture retenue
 
@@ -35,8 +40,11 @@ Un répertoire de travail distinct est réservé à chaque analyse.
 ## Modèle et états prévus
 
 User : profil, adresse unique normalisée, hash scrypt ; sessions persistées et quotas.
-Project : identifiant, nom, description, dates et propriétaire ; anciens projets
+Project : identifiant, nom, description, dates, propriétaire et équipe facultative ; anciens projets
 non attribués invisibles. Voir docs/authentication.md pour les contrôles et la migration.
+Team, TeamMember et TeamInvitation : rôles ADMIN/MEMBER/READER, adhésion courante
+et lien e-mail à usage unique. Pour un projet partagé, les droits reposent sur
+l'adhésion plutôt que sur le créateur historique. Voir [les équipes](teams.md).
 Analysis : projet, état, horodatages, empreinte des sources, profil et versions
 du moteur, compteurs, erreur technique, réservation et référence temporaire.
 Les diagnostics sont inclus dans le rapport JSONB de l'analyse : chemin relatif,
@@ -44,7 +52,7 @@ ligne et colonne facultatives, règle nullable, gravité, message et erreur de p
 Les nouvelles tentatives ont des identifiants distincts, sans lien dédié en MVP.
 
 États : QUEUED → RUNNING → SUCCEEDED ou FAILED ; QUEUED/RUNNING peuvent aussi
-aboutir à CANCELLED sur demande explicite du propriétaire.
+aboutir à CANCELLED sur demande explicite d'un utilisateur disposant du droit d'écriture.
 Une analyse terminée avec des problèmes de code est SUCCEEDED.
 Une erreur de syntaxe est un diagnostic ; un délai dépassé ou un crash est un échec technique.
 Une nouvelle tentative produit une nouvelle analyse ; les résultats terminaux sont immuables.

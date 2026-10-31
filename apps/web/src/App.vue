@@ -6,7 +6,7 @@ import { logout } from './auth';
 import AppIcon from './components/AppIcon.vue';
 const router = useRouter(); const route = useRoute(); const leaving = ref(false); const logoutError = ref('');
 const initials = computed(() => authState.user.value?.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() ?? '');
-const section = computed(() => route.path === '/forgot-password' ? 'Mot de passe oublié' : route.path === '/reset-password' ? 'Nouveau mot de passe' : route.path === '/login' ? 'Connexion' : route.path === '/register' ? 'Créer un compte' : route.path.startsWith('/projects') ? 'Projets' : route.path.startsWith('/analyses') ? 'Analyses' : route.path === '/profile' ? 'Mon profil' : 'Tableau de bord');
+const section = computed(() => route.path === '/team-invitation' ? 'Invitation' : route.path.startsWith('/teams') ? 'Équipes' : route.path === '/forgot-password' ? 'Mot de passe oublié' : route.path === '/reset-password' ? 'Nouveau mot de passe' : route.path === '/login' ? 'Connexion' : route.path === '/register' ? 'Créer un compte' : route.path.startsWith('/projects') ? 'Projets' : route.path.startsWith('/analyses') ? 'Analyses' : route.path === '/profile' ? 'Mon profil' : 'Tableau de bord');
 watch(section, (title) => { document.title = `${title} · CodeAudit`; }, { immediate: true });
 watch(() => route.path, async () => { await nextTick(); document.getElementById('main-content')?.focus({ preventScroll: true }); });
 async function signOut() {
@@ -76,6 +76,14 @@ async function signOut() {
           :size="18"
         />Projets</RouterLink>
         <RouterLink
+          to="/teams"
+          class="nav-item"
+          active-class="is-active"
+        ><AppIcon
+          name="user"
+          :size="18"
+        />Équipes</RouterLink>
+        <RouterLink
           to="/profile"
           class="nav-item"
           active-class="is-active"
@@ -95,7 +103,7 @@ async function signOut() {
     <div class="workspace-body">
       <header class="workspace-topbar">
         <div class="flex min-w-0 items-center gap-3">
-          <span class="hidden sm:inline">Espace personnel</span><span class="hidden text-slate-300 sm:inline">/</span><span class="truncate font-medium text-slate-700">{{ section }}</span>
+          <span class="hidden sm:inline">Espace de travail</span><span class="hidden text-slate-300 sm:inline">/</span><span class="truncate font-medium text-slate-700">{{ section }}</span>
         </div>
         <div
           v-if="authState.user.value"

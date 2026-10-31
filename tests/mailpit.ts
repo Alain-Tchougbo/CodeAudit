@@ -11,14 +11,14 @@ export async function testMessages(email: string): Promise<{ ID: string }[]> {
   if (!response.ok) throw new Error('Mailpit search unavailable');
   return ((await response.json()) as { messages: { ID: string }[] }).messages;
 }
-export async function resetLink(email: string): Promise<string> {
+export async function mailLink(email: string, path: 'reset-password' | 'team-invitation'): Promise<string> {
   const deadline = Date.now() + 8000;
   do {
     const messages = await testMessages(email);
     if (messages[0]) {
       const response = await fetch(`${base()}/api/v1/message/${encodeURIComponent(messages[0].ID)}`);
       const message = await response.json() as { Text: string };
-      const match = message.Text.match(/https?:\/\/[^\s]+\/reset-password#token=[a-f0-9]{64}/);
+      const match = message.Text.match(new RegExp(`https?://[^\\s]+/${path}#token=[a-f0-9]{64}`));
       if (!match) throw new Error('Reset link missing from test message');
       return match[0];
     }
@@ -26,3 +26,5 @@ export async function resetLink(email: string): Promise<string> {
   } while (Date.now() < deadline);
   throw new Error('No recovery message received in isolated Mailpit');
 }
+export const resetLink = (email: string) => mailLink(email, 'reset-password');
+export const invitationLink = (email: string) => mailLink(email, 'team-invitation');

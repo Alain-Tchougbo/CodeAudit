@@ -33,5 +33,5 @@ class AuthController {
   @Public() @Post('logout') @HttpCode(204)
   async logout(@Req() request: AuthRequest, @Res({ passthrough: true }) response: CookieResponse) { await this.auth.logout(request, response); }
 }
-@Module({ imports: [DatabaseModule], controllers: [AuthController, AccountController, ApiKeyController], providers: [AuthService, ApiKeyService, MailService, RecoveryService, { provide: APP_GUARD, useClass: SessionGuard }] })
+@Module({ imports: [DatabaseModule], controllers: [AuthController, AccountController, ApiKeyController], providers: [AuthService, ApiKeyService, MailService, RecoveryService, { provide: APP_GUARD, useClass: SessionGuard }], exports: [AuthService, MailService] })
 export class AuthModule {}

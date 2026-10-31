@@ -22,9 +22,9 @@ export interface ReservationOptions { leaseMs?: number; analysisMs?: number }
 export class AnalysisQueue {
   constructor(readonly client: PrismaClient) {}
 
-  async enqueue(projectId: string, sources: { key: string; digest: string }, options: { captureContext?: boolean; gitSource?: GitSource } = {}) {
+  async enqueue(projectId: string, sources: { key: string; digest: string }, options: { captureContext?: boolean; gitSource?: GitSource; projectScope?: Prisma.ProjectWhereInput } = {}) {
     return this.client.$transaction(async (transaction) => {
-      const project = await transaction.project.findUniqueOrThrow({ where: { id: projectId } });
+      const project = await transaction.project.findUniqueOrThrow({ where: { id: projectId, AND: options.projectScope ?? {} } });
       getAnalysisProfile(project.analysisProfileVersion);
       const policy: unknown = project.qualityPolicy;
       if (policy !== null && !isQualityPolicy(policy)) throw new JobError('QUALITY_POLICY_INVALID', 'Les seuils enregistrés sur ce projet sont invalides.');

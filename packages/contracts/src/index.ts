@@ -14,6 +14,8 @@ export interface AuthProfile { user: AuthUser; csrfToken: string; expiresAt: str
 export interface ActiveSession { id: string; current: boolean; createdAt: string; lastSeenAt: string; expiresAt: string }
 
 export interface Project {
+  team: { id: string; name: string } | null;
+  permissions: ProjectPermissions;
   id: string;
   name: string;
   description: string | null;
@@ -42,6 +44,7 @@ export interface ApiError {
 export type AnalysisStatus = 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
 
 export interface AnalysisSummary {
+  permissions: ProjectPermissions;
   cancelRequestedAt?: string | null;
   heartbeatAt?: string | null;
   deadlineAt?: string | null;
@@ -64,7 +67,7 @@ export interface AnalysisSummary {
   } | null;
 }
 
-export interface ProjectSnapshot extends Project {
+export interface ProjectSnapshot extends Pick<Project, 'id' | 'name' | 'description' | 'createdAt' | 'updatedAt'> {
   capturedAt: string;
   origin: 'ANALYSIS_REQUEST' | 'MIGRATION_BACKFILL';
 }
@@ -172,3 +175,11 @@ export interface QualityGate {
 export interface ApiKeySummary { id: string; projectId: string; name: string; createdAt: string; expiresAt: string; lastUsedAt: string | null }
 export interface ApiKeyCreated { key: ApiKeySummary; token: string }
 export { isQualityPolicy, evaluateQualityGate } from './quality.js';
+
+export interface ProjectPermissions { write: boolean; admin: boolean }
+export type TeamRole = 'ADMIN' | 'MEMBER' | 'READER';
+export interface TeamSummary { id: string; name: string; role: TeamRole; createdAt: string; memberCount: number; projectCount: number }
+export interface TeamMember { userId: string; name: string; role: TeamRole; joinedAt: string; email?: string }
+export interface TeamDetail extends TeamSummary { members: TeamMember[] }
+export interface TeamInvitation { id: string; email: string; role: 'MEMBER' | 'READER'; createdAt: string; expiresAt: string }
+export interface InvitationPreview { teamId: string; teamName: string; role: 'MEMBER' | 'READER'; expiresAt: string }

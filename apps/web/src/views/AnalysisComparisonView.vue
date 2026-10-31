@@ -179,6 +179,7 @@ const signed = (value: number) => `${value > 0 ? '+' : ''}${number(value)}`;
         :key="`${key()}:${category}`"
         :issues="issues"
         :analysis-id="category === 'resolved' ? data.baseline.id : data.target.id"
+        :can-manage-context="category === 'resolved' ? data.baseline.permissions.write : data.target.permissions.write"
         empty-title="Aucun problème dans cette catégorie."
         empty-description="Choisissez une autre catégorie pour consulter les autres diagnostics de cette comparaison."
       />

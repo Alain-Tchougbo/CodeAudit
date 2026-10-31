@@ -4,14 +4,14 @@ import type { ProjectRuleProfile } from '@codeaudit/contracts';
 import { apiJson } from '../api/http';
 import { useResource } from '../composables/useResource';
 import ResourceState from './ResourceState.vue';
-const props = defineProps<{ projectId: string }>();
+const props = withDefaults(defineProps<{ projectId: string; canEdit?: boolean }>(), { canEdit: true });
 const { data, loading, error, reload } = useResource(signal => apiJson<ProjectRuleProfile>(`/projects/${encodeURIComponent(props.projectId)}/rule-profile`, { signal }), () => props.projectId);
 const selected = ref(''); const busy = ref(false); const feedback = ref(''); const actionError = ref('');
 watch(data, value => { selected.value = value?.selectedVersion ?? ''; });
 watch(() => props.projectId, () => { feedback.value = ''; actionError.value = ''; });
 const profile = computed(() => data.value?.profiles.find(item => item.version === selected.value));
 async function save() {
-  if (busy.value) return; busy.value = true; feedback.value = ''; actionError.value = ''; const id = props.projectId;
+  if (busy.value || !props.canEdit) return; busy.value = true; feedback.value = ''; actionError.value = ''; const id = props.projectId;
   try { const result = await apiJson<ProjectRuleProfile>(`/projects/${encodeURIComponent(id)}/rule-profile`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: selected.value }) });
     if (props.projectId === id) { data.value = result; feedback.value = 'Profil enregistré pour les prochaines analyses.'; }
   } catch (cause) { if (props.projectId === id) actionError.value = cause instanceof Error ? cause.message : 'Enregistrement impossible.'; }
@@ -51,7 +51,7 @@ async function save() {
           id="rule-profile"
           v-model="selected"
           class="field min-w-0 flex-1"
-          :disabled="busy"
+          :disabled="busy || !canEdit"
         >
           <option
             v-for="option in data.profiles"
@@ -64,7 +64,7 @@ async function save() {
         <button
           type="submit"
           class="button-secondary"
-          :disabled="busy || selected === data.selectedVersion"
+          :disabled="busy || !canEdit || selected === data.selectedVersion"
         >
           {{ busy ? 'Enregistrement…' : 'Enregistrer le profil' }}
         </button>

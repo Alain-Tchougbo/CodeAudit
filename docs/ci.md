@@ -5,8 +5,9 @@
 Dans une fiche projet, ouvrir « Seuils qualité », activer la politique et choisir
 le maximum d'erreurs et d'avertissements. Valeurs entières de 0 à 1 000 000,
 seuil inclusif. Les erreurs de syntaxe sont déjà incluses dans les erreurs.
-GET/PUT /api/projects/:id/quality-policy exigent propriété et session, avec CSRF
-sur PUT. Une demande d'analyse copie la politique dans qualityPolicySnapshot.
+GET /api/projects/:id/quality-policy exige le droit de lecture et une session.
+PUT exige le propriétaire personnel ou un administrateur de l'équipe et le CSRF.
+Une demande d'analyse copie la politique dans qualityPolicySnapshot.
 Les analyses déjà demandées, y compris les rapports historiques, ne changent pas.
 
 GET /api/analyses/:id/quality-gate retourne une décision versionnée : PASS, FAIL,
@@ -27,6 +28,10 @@ uniquement en mémoire ; rechargement/navigation ne permettent pas de la relire.
 La liste ne contient que nom, UUID public et dates. Révoquer une clé exige une
 confirmation et le CSRF. Les clés expirées sont refusées et nettoyées à la création.
 La récupération de mot de passe révoque aussi les clés CI du compte.
+Sur un projet partagé, les rôles Administrateur et Membre permettent de gérer ses
+propres clés ; le rôle Lecture seule ne le permet pas. Le partage initial révoque
+toutes les clés du projet ; changer le rôle ou retirer une personne révoque les
+siennes pour tous les projets de l'équipe. Voir [les droits des équipes](teams.md).
 
 Un secret aléatoire de 32 octets est préfixé ca_. Seul son SHA-256 est conservé.
 Les clés ne remplacent pas les sessions : connexion, profil, réglages, contexte

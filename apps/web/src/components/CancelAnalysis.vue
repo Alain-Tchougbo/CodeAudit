@@ -9,7 +9,7 @@ const trigger = ref<HTMLButtonElement>(); const back = ref<HTMLButtonElement>();
 onScopeDispose(() => controller.abort());
 watch(confirming, async value => { await nextTick(); if (value) back.value?.focus(); else trigger.value?.focus(); });
 async function cancel() {
-  if (busy.value) return; busy.value = true; error.value = '';
+  if (busy.value || !props.analysis.permissions.write) return; busy.value = true; error.value = '';
   try { await analysesApi.cancel(props.analysis.id, controller.signal); if (!controller.signal.aborted) { confirming.value = false; emit('updated'); } }
   catch (cause) { if (!controller.signal.aborted) error.value = cause instanceof Error ? cause.message : 'Annulation impossible.'; }
   finally { if (!controller.signal.aborted) busy.value = false; }
@@ -17,7 +17,7 @@ async function cancel() {
 </script>
 <template>
   <div
-    v-if="analysis.status === 'QUEUED' || analysis.status === 'RUNNING'"
+    v-if="analysis.permissions.write && (analysis.status === 'QUEUED' || analysis.status === 'RUNNING')"
     class="mb-6"
   >
     <p

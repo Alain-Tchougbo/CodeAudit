@@ -5,13 +5,14 @@ import CodePreview from './CodePreview.vue';
 import { useCodeContext } from '../composables/useCodeContext';
 import { computed, ref, watch } from 'vue';
 import type { AnalysisIssue } from '@codeaudit/contracts';
-const props = withDefaults(defineProps<{ issues: AnalysisIssue[]; title?: string; emptyTitle?: string; emptyDescription?: string; analysisId?: string }>(), {
+const props = withDefaults(defineProps<{ issues: AnalysisIssue[]; title?: string; emptyTitle?: string; emptyDescription?: string; analysisId?: string; canManageContext?: boolean }>(), {
+  canManageContext: true,
   analysisId: undefined,
   title: 'Problèmes détectés', emptyTitle: 'Aucun problème détecté dans cette analyse.', emptyDescription: 'Le moteur n’a relevé aucun diagnostic pour le profil de règles utilisé.',
 });
 const context = useCodeContext(() => props.analysisId);
 const confirmingDelete = ref(false);
-async function removeContext() { await context.remove(); confirmingDelete.value = false; }
+async function removeContext() { if (!props.canManageContext) return; await context.remove(); confirmingDelete.value = false; }
 const severity = ref('');
 const file = ref('');
 const rule = ref('');
@@ -46,6 +47,7 @@ function reset() { severity.value = ''; file.value = ''; rule.value = ''; }
     >
       <p>{{ context.data.value.context.truncated ? 'Certains extraits sont limités ou indisponibles.' : 'Extraits conservés pour cette analyse.' }}</p>
       <button
+        v-if="canManageContext"
         class="text-link text-xs"
         :disabled="context.removing.value"
         @click="confirmingDelete = !confirmingDelete"
@@ -53,7 +55,7 @@ function reset() { severity.value = ''; file.value = ''; rule.value = ''; }
         Supprimer les extraits de code
       </button>
       <div
-        v-if="confirmingDelete"
+        v-if="confirmingDelete && canManageContext"
         class="w-full border-t border-[#dfe5df] pt-3"
       >
         <p>Supprimer définitivement tous les extraits de cette analyse ? Le rapport de diagnostics restera disponible.</p><div class="mt-3 flex flex-wrap gap-3">

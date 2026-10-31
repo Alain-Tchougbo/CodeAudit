@@ -17,7 +17,7 @@ const saving = ref(false);
 const saveError = ref('');
 
 async function save(input: CreateProjectRequest): Promise<void> {
-  if (!project.value || saving.value) return;
+  if (!project.value?.permissions.write || saving.value) return;
   saving.value = true;
   saveError.value = '';
   try {
@@ -52,8 +52,15 @@ async function save(input: CreateProjectRequest): Promise<void> {
       :error="error"
       @retry="reload"
     />
+    <p
+      v-if="project && !project.permissions.write && !loading && !error"
+      role="status"
+      class="notice notice-info"
+    >
+      Ce projet est accessible en lecture seule. Un membre ou administrateur peut modifier ses informations.
+    </p>
     <div
-      v-if="project && !loading && !error"
+      v-if="project && project.permissions.write && !loading && !error"
       class="form-layout"
     >
       <div class="panel">

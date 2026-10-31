@@ -4,7 +4,9 @@ function client() { const url = process.env.TEST_DATABASE_URL; if (!url || !/^\/
 export async function cleanupAccounts(ids: string[], emails: string[]) {
   const database = client();
   try {
-    await database.project.deleteMany({ where: { ownerId: { in: ids } } }); await database.user.deleteMany({ where: { id: { in: ids } } });
+    await database.project.deleteMany({ where: { ownerId: { in: ids } } });
+    await database.team.deleteMany({ where: { createdById: { in: ids }, projects: { none: {} } } });
+    await database.user.deleteMany({ where: { id: { in: ids } } });
     const hashes = ['login', 'register'].flatMap((operation) => [`${operation}:ip:127.0.0.1`, ...emails.map((email) => `${operation}:email:${email}`)]).map((key) => createHash('sha256').update(key).digest('hex'));
     await database.authThrottle.deleteMany({ where: { keyHash: { in: hashes } } });
   } finally { await database.$disconnect(); }

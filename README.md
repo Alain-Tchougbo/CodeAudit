@@ -1,6 +1,7 @@
 # CodeAudit
 
-Application d'audit statique JavaScript/TypeScript avec comptes et projets privés.
+Application d'audit statique JavaScript/TypeScript avec comptes, projets personnels
+et partage explicite en équipes.
 Le mode de lancement documenté reste local ; l'authentification ne constitue pas
 à elle seule une validation pour un déploiement public.
 Le module de gestion des projets est disponible : création, liste, détail,
@@ -66,7 +67,8 @@ par `pnpm dev`. Le volume PostgreSQL conserve les données entre les arrêts.
 Frontend : http://127.0.0.1:5173/ (tableau de bord), puis /projects.
 Créer son compte dans `/register`, puis se connecter dans `/login` si nécessaire.
 Une session serveur restaure l'accès après rechargement ; aucun jeton n'est stocké
-dans localStorage. Les utilisateurs voient uniquement leurs projets et rapports.
+dans localStorage. Chaque compte voit ses projets personnels et ceux des équipes
+auxquelles il appartient actuellement, avec les droits correspondant à son rôle.
 API : http://127.0.0.1:3000/api/projects ; santé du processus : /health.
 Vite transmet /api à l'API et /api/health à /health.
 PORT, WEB_PORT et API_PROXY_TARGET peuvent être définis dans le terminal pour
@@ -91,6 +93,21 @@ MAIL_FROM et AUTH_APP_ORIGIN correctement configurés. Ces secrets restent côt�
 serveur. Sans SMTP_HOST, la récupération est explicitement indisponible.
 Pour les tests PostgreSQL/Playwright, lancer aussi Mailpit ; TEST_SMTP_PORT et
 TEST_MAILPIT_API_URL valent par défaut 1026 et http://127.0.0.1:8026.
+
+### Équipes et partage
+
+Depuis « Équipes », créer une équipe puis inviter une adresse avec le rôle Membre
+ou Lecture seule. L'invitation est envoyée via le même service SMTP que la
+récupération du compte ; en local, consulter Mailpit. Le destinataire ouvre le lien,
+se connecte ou s'inscrit avec cette adresse, puis accepte explicitement. Le lien
+expire après sept jours et ne fonctionne qu'une fois. Aucune adhésion automatique
+n'est créée sur la seule base d'une adresse inscrite.
+
+Un projet reste personnel tant que son propriétaire ne confirme pas son partage
+depuis la fiche projet. Le partage donne accès à tout son historique, ses rapports
+et ses extraits enregistrés, et révoque ses clés CI existantes. Un membre retiré
+perd l'accès, même s'il a créé le projet. Les réglages et suppressions nécessitent
+un administrateur. [Droits, endpoints et limites des équipes](docs/teams.md).
 
 ### Configuration
 
