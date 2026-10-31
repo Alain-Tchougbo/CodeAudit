@@ -11,6 +11,8 @@ datasource db {
 }
 
 model Project {
+  qualityPolicy Json?
+  apiKeys ApiKey[]
   analysisProfileVersion String @default("codeaudit-js-ts-v1") @db.VarChar(120)
   id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name        String     @db.VarChar(120)
@@ -26,6 +28,7 @@ model Project {
 }
 
 model User {
+  apiKeys ApiKey[]
   id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name         String    @db.VarChar(120)
   email        String    @unique @db.VarChar(254)
@@ -58,6 +61,21 @@ model PasswordResetToken {
   @@index([expiresAt])
 }
 
+model ApiKey {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tokenHash String @unique @db.Char(64)
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String @db.Uuid
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name String @db.VarChar(80)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  lastUsedAt DateTime? @db.Timestamptz(3)
+  @@index([userId, projectId])
+  @@index([expiresAt])
+}
+
 model AuthThrottle {
   keyHash     String   @id @db.Char(64)
   count       Int
@@ -66,6 +84,7 @@ model AuthThrottle {
 }
 
 model Analysis {
+  qualityPolicySnapshot Json?
   id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   projectId        String         @db.Uuid
   project          Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)

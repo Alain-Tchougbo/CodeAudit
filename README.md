@@ -12,6 +12,13 @@ le suivi, l'historique et les rapports JSON persistés. Un worker indépendant t
 la file PostgreSQL, avec réservation atomique, délais et reprise après interruption.
 Le tableau de bord et les pages de consultation des analyses sont disponibles.
 
+Les « Seuils qualité » d'un projet fixent les nombres maximaux d'erreurs et
+d'avertissements pour ses prochaines analyses. Chaque demande conserve sa politique ;
+une analyse peut être SUCCEEDED avec une décision qualité négative. Les clés CI
+personnelles expirantes restent limitées à un projet. Le CLI `pnpm audit:ci`
+soumet un ZIP, attend le worker et renvoie un code de validation. Voir
+[les seuils, clés et intégration GitHub Actions](docs/ci.md).
+
 La fiche projet propose aussi « Analyser depuis GitHub » : dépôt public au format
 propriétaire/dépôt, référence facultative ou numéro de pull request. Le commit
 résolu et le fork éventuel sont conservés avec l'analyse ; les chemins sont

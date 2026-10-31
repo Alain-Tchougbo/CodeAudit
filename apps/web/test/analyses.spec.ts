@@ -38,6 +38,7 @@ async function screen(path = '/') {
 }
 function issues(items: AnalysisIssue[]) { const wrapper = mount(IssuesTable, { props: { issues: items } }); wrappers.push(wrapper); return wrapper; }
 beforeEach(() => {
+  vi.spyOn(analysesApi, 'gate').mockResolvedValue({ analysisId: analysis.id, schemaVersion: 1, status: 'NOT_CONFIGURED', policy: null, observed: null, criteria: [] });
   vi.spyOn(analysesApi, 'dashboard').mockResolvedValue(dashboard);
   vi.spyOn(analysesApi, 'get').mockResolvedValue(analysis);
   vi.spyOn(analysesApi, 'results').mockResolvedValue(report);

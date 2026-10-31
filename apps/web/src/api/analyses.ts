@@ -1,9 +1,10 @@
-import type { AnalysisCodeContext, AnalysisComparison, AnalysisHistory, AnalysisResults, AnalysisSummary, Dashboard } from '@codeaudit/contracts';
+import type { AnalysisCodeContext, AnalysisComparison, AnalysisHistory, AnalysisResults, AnalysisSummary, Dashboard, QualityGate } from '@codeaudit/contracts';
 
 import { apiResponse } from './http';
 const response = (path: string, signal?: AbortSignal, options: RequestInit = {}) => apiResponse(path, { ...options, signal });
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> { return (await response(path, signal)).json() as Promise<T>; }
 export const analysesApi = {
+  gate: (id: string, signal?: AbortSignal) => get<QualityGate>(`/analyses/${encodeURIComponent(id)}/quality-gate`, signal),
   cancel: async (id: string, signal?: AbortSignal): Promise<AnalysisSummary> => (await response(`/analyses/${encodeURIComponent(id)}/cancel`, signal, { method: 'POST' })).json() as Promise<AnalysisSummary>,
   create: async (projectId: string, file: File, signal?: AbortSignal, options: { captureContext?: boolean } = {}): Promise<AnalysisSummary> => {
     const form = new FormData(); form.append('archive', file);

@@ -4,7 +4,7 @@ import { IMPORT_LIMITS } from '@codeaudit/analysis-jobs';
 import { AnalysesService } from './analyses.service';
 import { HistoryQuery } from './history.dto';
 import { ReportExportService } from './report-export.service';
-import { CurrentUser } from '../auth/auth.types';
+import { ApiKeyAccess, CurrentUser } from '../auth/auth.types';
 import { ComparisonQuery, ComparisonService } from './comparison.service';
 import { AnalysisOptions } from './analysis-options.dto';
 
@@ -21,7 +21,7 @@ export class AnalysesController {
     return this.comparisons.compare(id, query.baselineId, userId);
   }
 
-  @Get('analyses/:id/report')
+  @ApiKeyAccess() @Get('analyses/:id/report')
   async report(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() userId: string,
@@ -34,7 +34,7 @@ export class AnalysesController {
     return report;
   }
 
-  @Post('projects/:projectId/analyses')
+  @ApiKeyAccess() @Post('projects/:projectId/analyses')
   @HttpCode(202)
   @UseInterceptors(FileInterceptor('archive', {
     limits: { fileSize: IMPORT_LIMITS.archiveBytes, files: 1, fields: 1, parts: 2, fieldSize: 10 },
@@ -58,9 +58,9 @@ export class AnalysesController {
     return this.analyses.history(projectId, query, userId);
   }
 
-  @Get('analyses/:id')
+  @ApiKeyAccess() @Get('analyses/:id')
   status(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() userId: string) { return this.analyses.status(id, userId); }
 
-  @Get('analyses/:id/results')
+  @ApiKeyAccess() @Get('analyses/:id/results')
   results(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() userId: string) { return this.analyses.results(id, userId); }
 }

@@ -3,7 +3,7 @@ import { PrismaClient } from './generated/prisma/client';
 import { databaseUrl } from './environment';
 
 export { Prisma, PrismaClient, AnalysisStatus } from './generated/prisma/client';
-export type { Project, Analysis } from './generated/prisma/client';
+export type { Project, Analysis, ApiKey } from './generated/prisma/client';
 
 export function createDatabaseClient(url = databaseUrl()): PrismaClient {
   return new PrismaClient({

@@ -6,6 +6,8 @@ import { useResource } from '../composables/useResource';
 import ProjectAnalyses from '../components/ProjectAnalyses.vue';
 import AnalysisImport from '../components/AnalysisImport.vue';
 import GitAnalysisImport from '../components/GitAnalysisImport.vue';
+import ProjectQualityPolicy from '../components/ProjectQualityPolicy.vue';
+import ProjectApiKeys from '../components/ProjectApiKeys.vue';
 import ProjectRuleProfile from '../components/ProjectRuleProfile.vue';
 import ResourceState from '../components/ResourceState.vue';
 import AppIcon from '../components/AppIcon.vue';
@@ -143,6 +145,14 @@ async function remove(): Promise<void> {
       />
       <GitAnalysisImport
         :key="`git-${project.id}`"
+        :project-id="project.id"
+      />
+      <ProjectQualityPolicy
+        :key="`quality-${project.id}`"
+        :project-id="project.id"
+      />
+      <ProjectApiKeys
+        :key="`keys-${project.id}`"
         :project-id="project.id"
       />
       <ProjectAnalyses :project-id="project.id" />

@@ -7,6 +7,7 @@ import { ReportExportService } from './report-export.service';
 import { ComparisonService } from './comparison.service';
 import { GitHubArchiveService } from './github-archive.service';
 import { GitHubImportController } from './github-import.controller';
+import { QualityController } from './quality.controller';
 
-@Module({ imports: [DatabaseModule], controllers: [AnalysesController, DashboardController, GitHubImportController], providers: [AnalysesService, ReportExportService, ComparisonService, GitHubArchiveService] })
+@Module({ imports: [DatabaseModule], controllers: [AnalysesController, DashboardController, GitHubImportController, QualityController], providers: [AnalysesService, ReportExportService, ComparisonService, GitHubArchiveService] })
 export class AnalysesModule {}
