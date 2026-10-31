@@ -143,6 +143,9 @@ importers:
       '@codeaudit/analysis-jobs':
         specifier: workspace:*
         version: link:../../packages/analysis-jobs
+      '@codeaudit/analyzer':
+        specifier: workspace:*
+        version: link:../../packages/analyzer
       '@codeaudit/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

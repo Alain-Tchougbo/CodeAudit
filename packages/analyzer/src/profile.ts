@@ -5,8 +5,11 @@ import tseslint from 'typescript-eslint';
 import tseslintMetadata from 'typescript-eslint/package.json';
 import { jsxUsesVars } from './jsx-uses-vars';
 import { version as typescriptVersion } from 'typescript';
+import { AnalysisError } from './types';
 
 export const ANALYSIS_PROFILE_VERSION = 'codeaudit-js-ts-v1';
+export const STRICT_PROFILE_VERSION = 'codeaudit-js-ts-strict-v1';
+export const PROFILE_VERSIONS = Object.freeze([ANALYSIS_PROFILE_VERSION, STRICT_PROFILE_VERSION] as const);
 export const SUPPORTED_EXTENSIONS = Object.freeze(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.mts', '.cts'] as const);
 export const IGNORED_DIRECTORIES = Object.freeze(['node_modules', '.git', 'dist', 'build', 'coverage'] as const);
 
@@ -48,9 +51,13 @@ const globals = Object.fromEntries([
   'Request', 'Response', 'Headers', 'AbortController', 'AbortSignal', 'alert', 'confirm',
 ].map((name) => [name, 'readonly' as const]));
 
-export function getAnalysisProfile(): AnalysisProfile {
+export function getAnalysisProfile(version: string = ANALYSIS_PROFILE_VERSION): AnalysisProfile {
+  if (!PROFILE_VERSIONS.some(value => value === version)) throw new AnalysisError('INVALID_OPTIONS', 'Profil de règles inconnu ou non pris en charge.');
+  const strictRules: Record<string, RuleConfiguration> = version === STRICT_PROFILE_VERSION ? {
+    'no-console': 'error', complexity: ['warn', 10], 'max-depth': ['warn', 4],
+  } : {};
   return structuredClone({
-    version: ANALYSIS_PROFILE_VERSION,
+    version,
     engines: {
       eslint: ESLint.version,
       typescript: typescriptVersion,
@@ -61,14 +68,18 @@ export function getAnalysisProfile(): AnalysisProfile {
     supportedExtensions: [...SUPPORTED_EXTENSIONS],
     ignoredDirectories: [...IGNORED_DIRECTORIES],
     globals,
-    rules: { javascript: jsRules, typescript: tsRules },
+    rules: {
+      javascript: { ...jsRules, ...strictRules, ...(version === STRICT_PROFILE_VERSION ? { 'no-unused-vars': ['error', unusedOptions] as RuleConfiguration } : {}) },
+      typescript: { ...tsRules, ...strictRules, ...(version === STRICT_PROFILE_VERSION ? { '@typescript-eslint/no-unused-vars': ['error', unusedOptions] as RuleConfiguration, '@typescript-eslint/no-explicit-any': 'error' as const } : {}) },
+    },
     allowInlineConfig: false,
     fix: false,
     typeInformation: false,
   });
 }
 
-export function createControlledLinter(): ESLint {
+export function createControlledLinter(version: string = ANALYSIS_PROFILE_VERSION): ESLint {
+  const profile = getAnalysisProfile(version);
   return new ESLint({
     cwd: trustedRoot,
     overrideConfigFile: true,
@@ -87,7 +98,7 @@ export function createControlledLinter(): ESLint {
         },
         linterOptions: { reportUnusedDisableDirectives: 'off' },
         plugins: { codeaudit: { rules: { 'jsx-uses-vars': jsxUsesVars } } },
-        rules: structuredClone(jsRules),
+        rules: profile.rules.javascript,
       },
       {
         files: ['**/*.{ts,tsx,mts,cts}'],
@@ -102,7 +113,7 @@ export function createControlledLinter(): ESLint {
           },
         },
         plugins: { '@typescript-eslint': tseslint.plugin as unknown as ESLint.Plugin },
-        rules: structuredClone(tsRules),
+        rules: profile.rules.typescript,
       },
       { files: ['**/*.{cjs,cts}'], languageOptions: { sourceType: 'commonjs' } },
     ],

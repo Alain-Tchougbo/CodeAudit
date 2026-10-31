@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@codeaudit/analysis-jobs": "workspace:*",
+    "@codeaudit/analyzer": "workspace:*",
     "@codeaudit/contracts": "workspace:*",
     "@codeaudit/database": "workspace:*",
     "@nestjs/common": "^11.1.0",

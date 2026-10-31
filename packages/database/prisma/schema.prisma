@@ -11,6 +11,7 @@ datasource db {
 }
 
 model Project {
+  analysisProfileVersion String @default("codeaudit-js-ts-v1") @db.VarChar(120)
   id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name        String     @db.VarChar(120)
   description String?    @db.VarChar(2000)

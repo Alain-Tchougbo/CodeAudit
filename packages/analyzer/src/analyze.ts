@@ -16,6 +16,7 @@ const lexical = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
 const portable = (path: string): string => path.split(sep).join('/');
 
 export async function analyzeProject(directory: string, options: AnalyzeOptions = {}): Promise<AnalysisReport> {
+  const profile = getAnalysisProfile(options.profileVersion);
   const startedAt = new Date().toISOString();
   const started = performance.now();
   const limits = { ...defaults, ...options.limits };
@@ -79,7 +80,7 @@ export async function analyzeProject(directory: string, options: AnalyzeOptions 
   try {
     await scan(root);
     candidates.sort((a, b) => lexical(portable(relative(root, a)), portable(relative(root, b))));
-    const linter = createControlledLinter();
+    const linter = createControlledLinter(profile.version);
     for (const absolute of candidates) {
       checkpoint();
       const filePath = portable(relative(root, absolute));
@@ -141,7 +142,7 @@ export async function analyzeProject(directory: string, options: AnalyzeOptions 
   const warningCount = files.reduce((sum, file) => sum + file.warningCount, 0);
   return {
     schemaVersion: 1 as const,
-    profile: getAnalysisProfile(),
+    profile,
     limits,
     startedAt,
     completedAt: new Date().toISOString(),

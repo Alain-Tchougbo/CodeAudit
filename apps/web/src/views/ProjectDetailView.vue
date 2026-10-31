@@ -5,6 +5,7 @@ import { projectsApi } from '../api/projects';
 import { useResource } from '../composables/useResource';
 import ProjectAnalyses from '../components/ProjectAnalyses.vue';
 import AnalysisImport from '../components/AnalysisImport.vue';
+import ProjectRuleProfile from '../components/ProjectRuleProfile.vue';
 import ResourceState from '../components/ResourceState.vue';
 import AppIcon from '../components/AppIcon.vue';
 import { date } from '../format';
@@ -131,6 +132,10 @@ async function remove(): Promise<void> {
       >
         {{ deleteError }}
       </p>
+      <ProjectRuleProfile
+        :key="`profile-${project.id}`"
+        :project-id="project.id"
+      />
       <AnalysisImport
         :key="project.id"
         :project-id="project.id"

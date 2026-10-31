@@ -3,6 +3,9 @@ export interface HealthResponse {
   service: 'codeaudit-api';
 }
 
+export interface RuleProfileOption { version: string; name: string; description: string; rules: { javascript: Record<string, unknown>; typescript: Record<string, unknown> } }
+export interface ProjectRuleProfile { selectedVersion: string; profiles: RuleProfileOption[] }
+
 export const PROJECT_NAME_MAX_LENGTH = 120;
 export const PROJECT_DESCRIPTION_MAX_LENGTH = 2000;
 export const ANALYSIS_ARCHIVE_MAX_BYTES = 10 * 1024 * 1024;
