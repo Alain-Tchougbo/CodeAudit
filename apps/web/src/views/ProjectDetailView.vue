@@ -5,6 +5,7 @@ import { projectsApi } from '../api/projects';
 import { useResource } from '../composables/useResource';
 import ProjectAnalyses from '../components/ProjectAnalyses.vue';
 import AnalysisImport from '../components/AnalysisImport.vue';
+import GitAnalysisImport from '../components/GitAnalysisImport.vue';
 import ProjectRuleProfile from '../components/ProjectRuleProfile.vue';
 import ResourceState from '../components/ResourceState.vue';
 import AppIcon from '../components/AppIcon.vue';
@@ -140,6 +141,7 @@ async function remove(): Promise<void> {
         :key="project.id"
         :project-id="project.id"
       />
+      <GitAnalysisImport :key="`git-${project.id}`" :project-id="project.id" />
       <ProjectAnalyses :project-id="project.id" />
     </template>
   </section>

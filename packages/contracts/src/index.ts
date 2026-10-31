@@ -68,8 +68,7 @@ export interface ProjectSnapshot extends Project {
 
 export type ReportJson = string | number | boolean | null | ReportJson[] | { [key: string]: ReportJson };
 
-export interface AnalysisExport {
-  schemaVersion: 1;
+export interface AnalysisExportData {
   project: ProjectSnapshot;
   analysis: {
     id: string;
@@ -84,6 +83,7 @@ export interface AnalysisExport {
   };
   report: { [key: string]: ReportJson };
 }
+export type AnalysisExport = AnalysisExportData & ({ schemaVersion: 1; source?: never } | { schemaVersion: 2; source: GitSource });
 
 export interface AnalysisHistory {
   items: AnalysisSummary[];
