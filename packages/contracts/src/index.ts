@@ -52,6 +52,7 @@ export interface AnalysisSummary {
   startedAt: string | null;
   finishedAt: string | null;
   profileVersion: string | null;
+  source?: GitSource | null;
   projectSnapshot?: ProjectSnapshot | null;
   error: { code: string; message: string } | null;
   statistics: {
@@ -70,8 +71,7 @@ export interface ProjectSnapshot extends Project {
 
 export type ReportJson = string | number | boolean | null | ReportJson[] | { [key: string]: ReportJson };
 
-export interface AnalysisExport {
-  schemaVersion: 1;
+export interface AnalysisExportData {
   project: ProjectSnapshot;
   analysis: {
     id: string;
@@ -86,6 +86,7 @@ export interface AnalysisExport {
   };
   report: { [key: string]: ReportJson };
 }
+export type AnalysisExport = AnalysisExportData & ({ schemaVersion: 1; source?: never } | { schemaVersion: 2; source: GitSource });
 
 export interface AnalysisHistory {
   items: AnalysisSummary[];
@@ -147,3 +148,14 @@ export interface Dashboard {
   warningCount: number;
   latestAnalyses: (AnalysisSummary & { projectName: string })[];
 }
+
+export interface GitSource {
+  schemaVersion: 1;
+  provider: 'GITHUB';
+  repository: string;
+  archiveRepository: string;
+  requestedRef: string;
+  commitSha: string;
+  pullRequest: number | null;
+}
+export interface GitImportRequest { repository: string; ref?: string; pullRequest?: number; captureContext?: boolean }

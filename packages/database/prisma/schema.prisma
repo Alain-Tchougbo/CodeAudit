@@ -81,6 +81,7 @@ model Analysis {
   workerId         String?        @db.VarChar(120)
   sourceKey        String?        @unique @db.Uuid
   sourceDigest     String?        @db.Char(64)
+  sourceMetadata   Json?
   projectSnapshot  Json?
   sourcesDeletedAt DateTime?      @db.Timestamptz(3)
   profileVersion   String?        @db.VarChar(120)

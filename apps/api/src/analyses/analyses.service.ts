@@ -1,7 +1,8 @@
 import { BadRequestException, ConflictException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type Analysis } from '@codeaudit/database';
 import { AnalysisQueue, JobError, SourceStore, prepareSources } from '@codeaudit/analysis-jobs';
-import type { AnalysisCodeContext, AnalysisSummary, ProjectSnapshot } from '@codeaudit/contracts';
+import type { AnalysisCodeContext, AnalysisSummary, ProjectSnapshot, GitSource } from '@codeaudit/contracts';
+import { gitSource } from './git-source';
 import { validateCodeContext } from './code-context.schema';
 import { PrismaService } from '../database/prisma.service';
 import type { HistoryQuery } from './history.dto';
@@ -10,6 +11,7 @@ export const SUMMARY_SELECT = {
   cancelRequestedAt: true, heartbeatAt: true, deadlineAt: true,
   id: true, projectId: true, status: true, createdAt: true, startedAt: true, finishedAt: true,
   profileVersion: true, errorCode: true, errorMessage: true, statistics: true, projectSnapshot: true,
+  sourceMetadata: true,
 } as const satisfies Prisma.AnalysisSelect;
 
 export function summary(record: Pick<Analysis, keyof typeof SUMMARY_SELECT>): AnalysisSummary {
@@ -23,6 +25,7 @@ export function summary(record: Pick<Analysis, keyof typeof SUMMARY_SELECT>): An
     startedAt: record.startedAt?.toISOString() ?? null,
     finishedAt: record.finishedAt?.toISOString() ?? null,
     profileVersion: record.profileVersion,
+    source: gitSource(record.sourceMetadata),
     projectSnapshot: record.projectSnapshot as unknown as ProjectSnapshot | null,
     error: record.errorCode ? { code: record.errorCode, message: record.errorMessage ?? 'Analyse échouée.' } : null,
     statistics: statistics ? {
@@ -54,7 +57,7 @@ export class AnalysesService {
     return summary(record);
   }
 
-  async create(projectId: string, archive: Buffer | undefined, ownerId: string, options: { captureContext?: boolean } = {}): Promise<AnalysisSummary> {
+  async create(projectId: string, archive: Buffer | undefined, ownerId: string, options: { captureContext?: boolean; gitSource?: GitSource; stripSingleRoot?: boolean } = {}): Promise<AnalysisSummary> {
     if (!await this.database.client.project.findUnique({ where: { id: projectId, ownerId }, select: { id: true } })) {
       throw new NotFoundException({ code: 'PROJECT_NOT_FOUND', message: 'Projet introuvable.' });
     }
@@ -65,7 +68,7 @@ export class AnalysesService {
     let sources: Awaited<ReturnType<typeof prepareSources>> | undefined;
     try {
       store = await SourceStore.open();
-      sources = await prepareSources(store, archive);
+      sources = await prepareSources(store, archive, { stripSingleRoot: options.stripSingleRoot });
       const record = await new AnalysisQueue(this.database.client).enqueue(projectId, sources, options);
       return summary(record);
     } catch (error) {

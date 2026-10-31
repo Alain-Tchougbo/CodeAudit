@@ -12,6 +12,13 @@ le suivi, l'historique et les rapports JSON persistés. Un worker indépendant t
 la file PostgreSQL, avec réservation atomique, délais et reprise après interruption.
 Le tableau de bord et les pages de consultation des analyses sont disponibles.
 
+La fiche projet propose aussi « Analyser depuis GitHub » : dépôt public au format
+propriétaire/dépôt, référence facultative ou numéro de pull request. Le commit
+résolu et le fork éventuel sont conservés avec l'analyse ; les chemins sont
+normalisés après validation du ZIP. Les imports Git produisent un export v2 avec
+provenance ; les exports ZIP historiques restent en v1. Voir
+[l'import Git et ses limites](docs/git-import.md).
+
 Une analyse en attente ou en cours peut être annulée depuis son détail, après
 confirmation. En cours, « Annulation demandée » précède l'arrêt effectif ; l'état
 final est « Annulée », distinct d'un échec technique. Aucun rapport partiel n'est

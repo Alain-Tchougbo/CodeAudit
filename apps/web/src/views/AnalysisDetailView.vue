@@ -104,6 +104,27 @@ const elapsed = computed(() => {
           </div>
         </dl>
         <AnalysisProgress :status="data.analysis.status" />
+        <dl
+          v-if="data.analysis.source"
+          class="mt-5 border-t border-[#e4e9df] pt-4 text-xs"
+        >
+          <dt class="font-semibold">
+            Provenance GitHub
+          </dt><dd class="mt-2 break-words">
+            {{ data.analysis.source.repository }} · {{ data.analysis.source.requestedRef }}
+          </dd>
+          <dt class="mt-3 text-slate-500">
+            Commit enregistré
+          </dt><dd class="mt-1 break-all font-mono">
+            {{ data.analysis.source.commitSha }}
+          </dd>
+          <dd
+            v-if="data.analysis.source.archiveRepository !== data.analysis.source.repository"
+            class="mt-2 break-words text-slate-500"
+          >
+            Sources du fork {{ data.analysis.source.archiveRepository }}
+          </dd>
+        </dl>
         <p
           v-if="data.analysis.status === 'RUNNING' && data.analysis.heartbeatAt"
           class="mt-4 text-xs text-slate-500"

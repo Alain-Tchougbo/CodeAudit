@@ -6,11 +6,14 @@ import addFormats from 'ajv-formats';
 import type { AnalysisExport } from '@codeaudit/contracts';
 import type { Analysis } from '@codeaudit/database';
 import { AnalysesService } from './analyses.service';
+import { gitSource } from './git-source';
 
 const schema = JSON.parse(readFileSync(require.resolve('@codeaudit/contracts/schemas/report-export.v1.schema.json'), 'utf8'));
+const schemaV2 = JSON.parse(readFileSync(require.resolve('@codeaudit/contracts/schemas/report-export.v2.schema.json'), 'utf8'));
 const validator = new Ajv({ allErrors: true, strict: true, coerceTypes: false, useDefaults: false, removeAdditional: false });
 addFormats(validator);
-export const validateReportExport = validator.compile<AnalysisExport>(schema);
+validator.addSchema(schema, 'report-export.v1.schema.json').addSchema(schemaV2, 'report-export.v2.schema.json');
+export const validateReportExport = validator.compile<AnalysisExport>({ oneOf: [{ $ref: 'report-export.v1.schema.json' }, { $ref: 'report-export.v2.schema.json' }] });
 
 @Injectable()
 export class ReportExportService {
@@ -32,8 +35,9 @@ export class ReportExportService {
     if (!stored.report || !stored.projectSnapshot || !stored.startedAt || !stored.finishedAt) {
       throw new ConflictException({ code: 'REPORT_UNAVAILABLE', message: 'Le rapport ou ses métadonnées enregistrées sont incomplets.' });
     }
+    const source = gitSource(stored.sourceMetadata);
     const document: unknown = {
-      schemaVersion: 1,
+      ...(source ? { schemaVersion: 2, source } : { schemaVersion: 1 }),
       project: stored.projectSnapshot,
       analysis: {
         id: stored.id, projectId: stored.projectId, status: stored.status,
