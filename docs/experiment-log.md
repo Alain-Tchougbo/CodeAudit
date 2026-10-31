@@ -800,3 +800,80 @@ mais restent indisponibles en environnement local sans applications OAuth et
 identifiants réels. Configuration et vérification interactive fournisseur restent
 à réaliser par l'opérateur. Aucun pentest, audit cryptographique indépendant,
 déploiement public HTTPS ou livraison Internet des e-mails n'est revendiqué.
+
+## 31 octobre 2026 — Démonstration réelle et présentation publique
+
+Demande : préparer un vrai projet à analyser et une présentation GitHub claire
+pour une candidature personnelle à un programme ambassadeur. Audit du README,
+des scripts, des routes, de la configuration et du workflow Git avant modification.
+Branche dédiée docs/public-demo-readme créée depuis origin/staging. Le dépôt est
+public ; sa branche par défaut est main. La publication de staging vers main
+reste une livraison distincte, sans modification directe ni contournement de CI.
+
+Choix d'Express 5.1.0 sous licence MIT, commit amont
+cd7d4397c398a3f3ecadeaf9ef6ac1377bd414c4 vérifié via GitHub. Téléchargement réel
+du ZIP : 250 407 octets, 295 entrées, SHA-256
+f1d730c4a89ca142cef7da22229b99cec1aefabda7d71115cd4f935eda719628.
+Ajout de pnpm demo:prepare : téléchargement borné et temporisé, commit et empreinte
+figés, contrôle du cache existant sans remplacement silencieux, refus des liens
+symboliques, aucune installation/exécution du projet amont. Deux exécutions
+réussies : téléchargement puis réutilisation du cache. Archive sous .tmp, ignorée.
+
+Parcours Chromium réel sur l'application locale déjà démarrée : création d'un
+compte de démonstration séparé, création du projet, import ZIP, conservation
+facultative d'extraits, attente du worker, rechargement, filtres, historique et
+téléchargement JSON. Export comparé au rapport persisté retourné par l'API :
+égalité. Aucun appel API intercepté. Compte et mot de passe locaux conservés
+uniquement dans un fichier ignoré, jamais dans les captures ou la documentation.
+Le ZIP s'est terminé en SUCCEEDED avec 142 fichiers analysés, 122 concernés,
+1 728 erreurs, 294 avertissements, 0 erreur de syntaxe et 83 entrées ignorées.
+Pas d'erreur JavaScript navigateur observée durant ce premier parcours.
+
+Deuxième analyse par l'interface d'import GitHub, contre le fournisseur réel :
+même commit, mêmes compteurs, état SUCCEEDED et provenance persistée. Export Git
+v2 comparé au rapport enregistré : égalité. Le ZIP reste en v1. Les chemins Git
+sont normalisés, ceux du ZIP conservent le dossier enveloppe : la documentation
+explique pourquoi les comparer directement ne mesure pas un changement de code.
+Filtrage lib/ et eqeqeq : 3 résultats, vérifiés dans le navigateur. Mobile 390 px
+sans débordement horizontal. Captures réelles du tableau de bord, du projet et
+des diagnostics, inspectées visuellement ; aucune maquette ni statistique inventée.
+
+Limite explicitée après lecture des diagnostics : 1 725 no-undef, notamment sur
+describe/it et XMLHttpRequest, car les globals et configurations du projet ne sont
+pas chargés. Ces compteurs ne sont pas présentés comme des bugs ou failles d'Express.
+Les 297 autres diagnostics sont no-unused-vars (252), no-console (42), eqeqeq (3).
+
+README principal réécrit en anglais, captures et schéma d'architecture, démarrage
+PowerShell/Unix, fonctionnalités, preuves datées, rôle de Codex et limites.
+Ancien guide opérationnel conservé dans docs/development.md avec liens relatifs
+corrigés et démarrage compilé documenté. Guide de démonstration en français et
+mesures agrégées sans identifiants de compte dans docs/demo-evidence.json.
+Aucune acceptation à un programme, affiliation, couverture de tests chiffrée ou
+préparation à la production n'est revendiquée. Aucune dépendance ajoutée.
+
+Contrôles locaux terminés : pnpm check réussi, dont 28 tests analyzer, 129 Vue,
+56 analysis-jobs et 73 API (286 au total), lint, typage, builds et validation Prisma.
+pnpm typecheck:tools et pnpm lint ont aussi été exécutés directement avec succès
+pour le nouveau script. pnpm db:check : aucune différence ; Compose valide ;
+pnpm audit --prod : aucune vulnérabilité connue signalée à cet instant.
+57 liens/ancres/images locaux et cohérence des totaux JSON vérifiés. Description
+et huit thèmes GitHub renseignés. Archive, exports complets et identifiants locaux
+confirmés ignorés par Git. La CI complète et la politique de PR doivent être
+vertes avant toute fusion ; leurs résultats sont consultables sur la PR de tâche.
+
+La première CI de la PR 16 (41250109285) a réussi les contrôles du socle et les
+tests PostgreSQL, mais échoué dans un scénario Playwright de 2FA : 20 parcours
+réussis, 1 échec confirmé au retry. Après le clic de déconnexion, le test essayait
+immédiatement de remplir « Adresse e-mail » ; la navigation asynchrone n'était
+pas terminée et le sélecteur trouvait la section portant ce titre dans le profil.
+Correction du test : attendre l'URL /login et le titre Connexion, puis cibler
+le rôle textbox pour le champ e-mail. Pas d'attente fixe, de simulation des réponses
+ni d'assouplissement des contrôles 2FA. Aucun code applicatif modifié par ce correctif.
+
+### 1er novembre 2026 — Vérification du correctif de synchronisation
+
+Typage des outils/tests et lint ciblé réussis. Parcours 2FA rejoué localement
+trois fois avec --repeat-each 3 --retries 0 : 3/3 succès en 1,2 minute, avec les
+vrais services de test et sans changement des réponses ou des contrôles de session.
+La première CI avait aussi confirmé 192/192 intégrations PostgreSQL. La correction
+est poussée sur la même branche pour relancer tous les contrôles avant fusion.
