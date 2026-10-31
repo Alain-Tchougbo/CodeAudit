@@ -10,7 +10,7 @@ import { date } from '../format';
 const route = useRoute();
 const { data: projects, loading, error, reload } = useResource((signal) => projectsApi.list(signal));
 const search = ref('');
-const filtered = computed(() => (projects.value ?? []).filter(project => `${project.name} ${project.description ?? ''}`.toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase())));
+const filtered = computed(() => (projects.value ?? []).filter(project => `${project.name} ${project.description ?? ''} ${project.team?.name ?? ''}`.toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase())));
 </script>
 <template>
   <section aria-labelledby="projects-heading">
@@ -117,6 +117,8 @@ const filtered = computed(() => (projects.value ?? []).filter(project => `${proj
                   class="break-words text-sm font-semibold text-slate-900 underline-offset-4 hover:text-indigo-700 hover:underline"
                 >{{ project.name }}</RouterLink><p class="mt-1.5 line-clamp-2 whitespace-pre-wrap break-words text-xs text-slate-500">
                   {{ project.description || 'Aucune description.' }}
+                </p><p class="mt-2 text-xs text-slate-600">
+                  {{ project.team?.name ?? 'Personnel' }}<span v-if="!project.permissions.write"> · Lecture seule</span>
                 </p><p class="mt-3 text-xs text-slate-500 md:hidden">
                   Modifié le {{ date(project.updatedAt) }}
                 </p>

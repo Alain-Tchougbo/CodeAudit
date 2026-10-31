@@ -9,6 +9,7 @@ import IssuesTable from '../src/components/IssuesTable.vue';
 import ProjectAnalyses from '../src/components/ProjectAnalyses.vue';
 
 const analysis: AnalysisSummary = {
+  permissions: { write: true, admin: true },
   id: 'analysis-id', projectId: 'project-id', status: 'SUCCEEDED',
   createdAt: '2026-10-30T08:00:00Z', startedAt: '2026-10-30T08:00:01Z', finishedAt: '2026-10-30T08:00:03Z',
   profileVersion: 'codeaudit-js-ts-v1', error: null,

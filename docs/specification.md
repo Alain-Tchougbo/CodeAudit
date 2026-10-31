@@ -6,11 +6,16 @@ Le formulaire de lancement ZIP est disponible dans la fiche projet.
 
 ## Objectif et périmètre
 
-Application d'audit statique JavaScript et TypeScript avec comptes et projets privés.
+Application d'audit statique JavaScript et TypeScript avec comptes, projets personnels
+et partage explicite en équipes avec rôles.
 Le MVP couvre les projets, l'import ZIP, les analyses asynchrones, les résultats
 détaillés, les indicateurs, l'historique et l'export JSON.
-Pas d'intégration Git, de correction automatique,
-d'exécution des sources ni d'installation des dépendances des projets importés.
+Les évolutions validées ajoutent comparaison, extraits facultatifs, récupération du
+compte et sessions, profils maîtrisés, annulation, imports GitHub publics, seuils
+qualité et CI, puis équipes. Les imports Git et équipes étendent le périmètre
+initial sans correction automatique, exécution des sources ni installation des
+dépendances des projets importés. Voir [import Git](git-import.md), [CI](ci.md)
+et [équipes et droits](teams.md) pour les contrats et limites.
 
 ## Architecture retenue
 

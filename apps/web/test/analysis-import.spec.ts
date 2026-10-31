@@ -5,7 +5,7 @@ import { ANALYSIS_ARCHIVE_MAX_BYTES, type AnalysisSummary } from '@codeaudit/con
 import AnalysisImport from '../src/components/AnalysisImport.vue';
 import { analysesApi } from '../src/api/analyses';
 const wrappers: VueWrapper[] = [];
-const result: AnalysisSummary = { id: 'queued-id', projectId: 'project-id', status: 'QUEUED', createdAt: '2026-10-31T00:00:00Z', startedAt: null, finishedAt: null, profileVersion: null, error: null, statistics: null };
+const result: AnalysisSummary = { permissions: { write: true, admin: true }, id: 'queued-id', projectId: 'project-id', status: 'QUEUED', createdAt: '2026-10-31T00:00:00Z', startedAt: null, finishedAt: null, profileVersion: null, error: null, statistics: null };
 async function screen() {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: { template: '<p>Projet</p>' } }, { path: '/analyses/:id', component: { template: '<p>Suivi</p>' } }] });
   await router.push('/'); await router.isReady();

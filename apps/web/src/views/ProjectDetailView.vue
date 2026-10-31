@@ -9,6 +9,7 @@ import GitAnalysisImport from '../components/GitAnalysisImport.vue';
 import ProjectQualityPolicy from '../components/ProjectQualityPolicy.vue';
 import ProjectApiKeys from '../components/ProjectApiKeys.vue';
 import ProjectRuleProfile from '../components/ProjectRuleProfile.vue';
+import ProjectSharing from '../components/ProjectSharing.vue';
 import ResourceState from '../components/ResourceState.vue';
 import AppIcon from '../components/AppIcon.vue';
 import { date } from '../format';
@@ -18,7 +19,7 @@ const confirming = ref(false); const deleting = ref(false); const deleteError = 
 const deleteTrigger = ref<HTMLButtonElement>(); const cancelButton = ref<HTMLButtonElement>();
 watch(confirming, async (value) => { await nextTick(); if (value) cancelButton.value?.focus(); else deleteTrigger.value?.focus(); });
 async function remove(): Promise<void> {
-  if (!project.value || deleting.value) return; deleting.value = true; deleteError.value = '';
+  if (!project.value?.permissions.admin || deleting.value) return; deleting.value = true; deleteError.value = '';
   try { await projectsApi.delete(project.value.id); await router.push({ path: '/projects', query: { deleted: '1' } }); }
   catch (cause) { deleteError.value = cause instanceof Error ? cause.message : 'Impossible de supprimer le projet.'; }
   finally { deleting.value = false; }
@@ -70,9 +71,11 @@ async function remove(): Promise<void> {
           </p>
         </div><div class="flex flex-wrap gap-2">
           <RouterLink
+            v-if="project.permissions.write"
             :to="`/projects/${project.id}/edit`"
             class="button-secondary"
           >Modifier le projet</RouterLink><button
+            v-if="project.permissions.admin"
             ref="deleteTrigger"
             :disabled="deleting"
             class="button-danger"
@@ -135,23 +138,50 @@ async function remove(): Promise<void> {
       >
         {{ deleteError }}
       </p>
+      <p
+        v-if="project.team"
+        class="notice mb-6"
+      >
+        Projet partagé avec <RouterLink
+          :to="`/teams/${project.team.id}`"
+          class="text-link"
+        >{{ project.team.name }}</RouterLink>.
+      </p>
+      <p
+        v-if="!project.permissions.write"
+        role="status"
+        class="notice notice-warning mb-6"
+      >
+        Accès en lecture seule. Vous pouvez consulter les analyses et télécharger les rapports.
+      </p>
+      <ProjectSharing
+        v-if="!project.team && project.permissions.admin"
+        :key="`sharing-${project.id}`"
+        :project-id="project.id"
+        @updated="reload"
+      />
       <ProjectRuleProfile
         :key="`profile-${project.id}`"
         :project-id="project.id"
+        :can-edit="project.permissions.admin"
       />
       <AnalysisImport
+        v-if="project.permissions.write"
         :key="project.id"
         :project-id="project.id"
       />
       <GitAnalysisImport
+        v-if="project.permissions.write"
         :key="`git-${project.id}`"
         :project-id="project.id"
       />
       <ProjectQualityPolicy
         :key="`quality-${project.id}`"
         :project-id="project.id"
+        :can-edit="project.permissions.admin"
       />
       <ProjectApiKeys
+        v-if="project.permissions.write"
         :key="`keys-${project.id}`"
         :project-id="project.id"
       />

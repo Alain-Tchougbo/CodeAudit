@@ -4,6 +4,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { AnalysesModule } from './analyses/analyses.module';
 import { AuthModule } from './auth/auth.module';
 import { Public } from './auth/auth.types';
+import { TeamsModule } from './teams/teams.module';
 
 @Controller('health')
 export class HealthController {
@@ -14,5 +15,5 @@ export class HealthController {
   }
 }
 
-@Module({ imports: [AuthModule, ProjectsModule, AnalysesModule], controllers: [HealthController] })
+@Module({ imports: [AuthModule, ProjectsModule, AnalysesModule, TeamsModule], controllers: [HealthController] })
 export class AppModule {}

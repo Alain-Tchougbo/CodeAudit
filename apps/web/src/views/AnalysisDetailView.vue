@@ -233,6 +233,7 @@ const elapsed = computed(() => {
         :key="data.analysis.id"
         :issues="data.report.issues"
         :analysis-id="data.analysis.id"
+        :can-manage-context="data.analysis.permissions.write"
       />
     </template>
   </section>

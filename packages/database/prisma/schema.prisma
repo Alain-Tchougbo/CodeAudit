@@ -11,6 +11,8 @@ datasource db {
 }
 
 model Project {
+  teamId String? @db.Uuid
+  team Team? @relation(fields: [teamId], references: [id], onDelete: Restrict)
   qualityPolicy Json?
   apiKeys ApiKey[]
   analysisProfileVersion String @default("codeaudit-js-ts-v1") @db.VarChar(120)
@@ -25,9 +27,13 @@ model Project {
 
   @@index([createdAt, id])
   @@index([ownerId, createdAt, id])
+  @@index([teamId, createdAt, id])
 }
 
 model User {
+  createdTeams Team[]
+  memberships TeamMember[]
+  sentTeamInvitations TeamInvitation[]
   apiKeys ApiKey[]
   id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name         String    @db.VarChar(120)
@@ -59,6 +65,49 @@ model PasswordResetToken {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   expiresAt DateTime @db.Timestamptz(3)
   @@index([expiresAt])
+}
+
+model Team {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String @db.VarChar(120)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  createdById String @db.Uuid
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  members TeamMember[]
+  invitations TeamInvitation[]
+  projects Project[]
+}
+
+model TeamMember {
+  teamId String @db.Uuid
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role TeamRole @default(MEMBER)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@id([teamId, userId])
+  @@index([userId])
+}
+
+model TeamInvitation {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teamId String @db.Uuid
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  email String @db.VarChar(254)
+  role TeamRole
+  tokenHash String @unique @db.Char(64)
+  invitedById String @db.Uuid
+  invitedBy User @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  @@unique([teamId, email])
+  @@index([expiresAt])
+}
+
+enum TeamRole {
+  ADMIN
+  MEMBER
+  READER
 }
 
 model ApiKey {

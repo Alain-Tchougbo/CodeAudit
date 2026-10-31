@@ -5,6 +5,7 @@ import type { AnalysisComparison, AnalysisResults } from '@codeaudit/contracts';
 import { AnalysesService, summary } from './analyses.service';
 import { ReportExportService } from './report-export.service';
 import { compareIssues } from './compare-issues';
+import { projectPermissions } from '../access/project-access';
 
 export class ComparisonQuery { @IsUUID() baselineId!: string; }
 type ComparableReport = AnalysisResults & { limits: unknown; files: { filePath: string }[] };
@@ -25,7 +26,7 @@ export class ComparisonService {
     }
     const beforeFiles = new Set(before.files.map(file => file.filePath)); const afterFiles = new Set(after.files.map(file => file.filePath));
     return {
-      schemaVersion: 1, matchingVersion: 'file-rule-message-v1', baseline: summary(baseline), target: summary(target),
+      schemaVersion: 1, matchingVersion: 'file-rule-message-v1', baseline: summary(baseline, projectPermissions(baseline.project, ownerId)), target: summary(target, projectPermissions(target.project, ownerId)),
       ...compareIssues(before.issues, after.issues),
       deltas: { errorCount: after.statistics.errorCount - before.statistics.errorCount, warningCount: after.statistics.warningCount - before.statistics.warningCount,
         analyzedFileCount: after.statistics.analyzedFileCount - before.statistics.analyzedFileCount, affectedFileCount: after.statistics.affectedFileCount - before.statistics.affectedFileCount },

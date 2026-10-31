@@ -5,6 +5,7 @@ import type { ApiKeyCreated, ApiKeySummary, AuthProfile } from '@codeaudit/contr
 import { PrismaService } from '../database/prisma.service';
 import { sessionToken } from './auth.service';
 import type { AuthRequest } from './auth.types';
+import { projectWriteScope, requireProjectAccess } from '../access/project-access';
 const hash = (token: string) => createHash('sha256').update(token).digest('hex');
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const invalid = () => new UnauthorizedException({ code: 'API_KEY_INVALID', message: 'Clé d’intégration invalide, expirée ou révoquée.' });
@@ -17,7 +18,7 @@ export class ApiKeyService {
     if (!allowed || sessionToken(request) || typeof authorization !== 'string' || !/^Bearer ca_[a-f0-9]{64}$/.test(authorization)) throw invalid();
     const key = await this.database.client.apiKey.findUnique({ where: { tokenHash: hash(authorization.slice(7)) }, include: { user: { select: { id: true, name: true, email: true, createdAt: true } } } });
     if (!key || key.expiresAt <= new Date()) throw invalid();
-    const project = await this.database.client.project.findUnique({ where: { id: key.projectId, ownerId: key.userId }, select: { id: true } });
+    const project = await this.database.client.project.findUnique({ where: { id: key.projectId, AND: projectWriteScope(key.userId) }, select: { id: true } });
     if (!project) throw invalid();
     const params = request.params ?? {};
     if (params.projectId !== undefined) {
@@ -29,7 +30,7 @@ export class ApiKeyService {
     return { user: { ...key.user, createdAt: key.user.createdAt.toISOString() }, csrfToken: '', expiresAt: key.expiresAt.toISOString() };
   }
   private async project(projectId: string, userId: string) {
-    if (!await this.database.client.project.findUnique({ where: { id: projectId, ownerId: userId }, select: { id: true } })) throw new NotFoundException({ code: 'PROJECT_NOT_FOUND', message: 'Projet introuvable.' });
+    await requireProjectAccess(this.database.client, projectId, userId, 'write');
   }
   async list(projectId: string, userId: string): Promise<ApiKeySummary[]> {
     await this.project(projectId, userId);
@@ -39,7 +40,7 @@ export class ApiKeyService {
     await this.project(projectId, userId); const token = `ca_${randomBytes(32).toString('hex')}`;
     try {
       const key = await this.database.client.$transaction(async transaction => {
-        if (!await transaction.project.findUnique({ where: { id: projectId, ownerId: userId }, select: { id: true } })) throw new NotFoundException({ code: 'PROJECT_NOT_FOUND', message: 'Projet introuvable.' });
+        await requireProjectAccess(transaction, projectId, userId, 'write');
         await transaction.apiKey.deleteMany({ where: { projectId, userId, expiresAt: { lte: new Date() } } });
         if (await transaction.apiKey.count({ where: { projectId, userId, expiresAt: { gt: new Date() } } }) >= 20) throw new ConflictException({ code: 'API_KEY_LIMIT', message: 'Vingt clés actives sont déjà présentes sur ce projet.' });
         return transaction.apiKey.create({ data: { projectId, userId, name, tokenHash: hash(token), expiresAt: new Date(Date.now() + days * 86400000) } });
@@ -48,7 +49,7 @@ export class ApiKeyService {
     } catch (error) { if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') throw new ConflictException({ code: 'API_KEY_CONCURRENT_UPDATE', message: 'Une création simultanée a eu lieu. Réessayez.' }); throw error; }
   }
   async revoke(projectId: string, id: string, userId: string) {
-    await this.project(projectId, userId); const removed = await this.database.client.apiKey.deleteMany({ where: { id, projectId, userId } });
+    await this.project(projectId, userId); const removed = await this.database.client.apiKey.deleteMany({ where: { id, projectId, userId, project: projectWriteScope(userId) } });
     if (!removed.count) throw new NotFoundException({ code: 'API_KEY_NOT_FOUND', message: 'Clé d’intégration introuvable.' });
   }
 }

@@ -11,6 +11,7 @@ import ProjectEditView from '../src/views/ProjectEditView.vue';
 
 // Jeux de tests uniquement : aucune donnée de démonstration dans les écrans.
 const project: Project = {
+  team: null, permissions: { write: true, admin: true },
   id: 'a0467b83-7961-4ec3-b003-d91ec82f82c0',
   name: 'Projet de test', description: 'Description de test',
   createdAt: '2026-10-30T08:00:00.000Z', updatedAt: '2026-10-30T08:00:00.000Z',

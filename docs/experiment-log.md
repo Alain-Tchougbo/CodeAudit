@@ -559,3 +559,73 @@ explicite d'analyses d'un autre projet du même compte ajoutés aux tests ; lint
 typage outils/API finaux réussis après cette correction. Suites PostgreSQL et
 Chromium complètes en cours. Aucun runner externe ni déploiement public HTTPS
 configuré ou revendiqué. Aucune dépendance externe ajoutée.
+
+### Résultats finaux du lot 7
+
+Le processus Windows regroupant les suites PostgreSQL s'est terminé avec le code
+natif -1073740791 sans résumé Jest ; la cause n'a pas été établie et cette tentative
+n'est pas comptée comme réussie. Après vérification des processus et des seuls
+résidus synthétiques de la base dédiée `_test`, nettoyage contrôlé des fixtures
+abandonnées, puis exécution des dix suites dans dix processus distincts : 140/140
+tests PostgreSQL réussis. Chromium local : 17/17 parcours réussis. La CI Linux
+41192282973 a aussi validé la suite regroupée complète et Playwright. PR 13 fusionnée
+par squash sur staging da27246, après réussite de check et pr-policy.
+
+## 31 octobre 2026 — collaboration en équipe, lot 8
+
+Branche feat/team-collaboration depuis staging da27246. Migration
+20261031000800_teams appliquée aux bases locale et de test ; génération Prisma
+réussie. Ajout d'équipes, adhésions ADMIN/MEMBER/READER, invitations et rattachement
+explicite d'un projet personnel. Aucun projet existant partagé automatiquement.
+La relation projet/équipe interdit la suppression d'une équipe contenant des projets.
+
+Scopes de lecture, écriture et administration centralisés, appliqués à tous les
+endpoints projet/analyse, aux clés CI et au tableau de bord, y compris sa requête SQL.
+Les droits d'un projet partagé reposent exclusivement sur l'adhésion actuelle :
+le créateur retiré n'a pas de passe-droit via ownerId. Les permissions Vue viennent
+de l'API et masquent les mutations au lecteur ; l'API refuse aussi les appels directs.
+Le partage révoque les clés du projet, et un changement de rôle ou retrait révoque
+les clés de la personne concernée et ses invitations encore en attente.
+
+L'inscription ne validant pas généralement la boîte e-mail, une adresse inscrite
+n'est jamais ajoutée automatiquement comme membre. Un véritable message SMTP
+transmet un jeton aléatoire de 32 octets, dont seul le SHA-256 est stocké, valable
+sept jours et consommé une seule fois avec un compte correspondant à l'adresse.
+Renvoi, révocation, expiration, quotas et échec SMTP explicite. Le lien est dans un
+fragment ; la transition inscription/connexion ne le place ni en query ni en stockage
+persistant. Après rechargement pendant la connexion, rouvrir le lien reçu.
+Les transactions Serializable protègent le dernier administrateur et l'acceptation
+concurrente. Tests SMTP exclusivement vers des adresses synthétiques dans Mailpit.
+
+Interfaces Vue : équipes, détail/membres/invitations, confirmation du partage avec
+mention explicite de l'historique et des extraits, rôles, départ et retrait.
+Contrats Project et AnalysisSummary enrichis de permissions sans modifier les
+snapshots des anciens rapports. La revue a aussi corrigé un nettoyage trop large :
+si la présentation d'une réponse échoue après enqueue, les sources déjà confiées au
+worker sont conservées pour terminer le travail, puis nettoyées normalement.
+
+Premiers contrôles : 16/16 intégrations ciblées réussies avec PostgreSQL et SMTP
+réels ; le premier passage avait deux attentes incorrectes dans les nouveaux tests
+(champ version du profil et annulation HTTP 202), corrigées conformément aux
+contrats existants. `pnpm check` réussi : 261 tests (28 analyzer, 56 jobs, 58 API,
+119 Vue), lint sans avertissement, typage, builds et validation Prisma. Audit des
+dépendances de production sans vulnérabilité connue ; Compose valide. Vérifications
+PostgreSQL et Chromium finales encore à consigner après leurs résultats effectifs.
+
+Le processus regroupé PostgreSQL est resté actif sans progression visible dans la
+suite de comparaison sur ce poste Windows ; il a été arrêté après vérification de
+sa ligne de commande. Il n'est pas déclaré réussi et la cause reste à diagnostiquer.
+Une tentative a chevauché ce processus et un parcours navigateur sur la même base :
+ces exécutions ne servent pas de validation finale. Les fixtures synthétiques
+abandonnées ont été identifiées puis supprimées avec garde sur le nom de la base,
+les noms de projets et les adresses de test. Les reprises sont séquencées : Chromium,
+puis chaque suite PostgreSQL dans un processus distinct.
+
+Le nouveau parcours Chromium a ensuite révélé deux attentes incorrectes du test :
+le nom accessible du lien projet inclut sa description, et l'export enveloppe les
+compteurs dans report.statistics. Sélecteur et lecture du contrat corrigés, nettoyage
+du test borné et effectué aussi en cas d'échec. Le parcours isolé a réussi en
+17,8 secondes : création équipe, vrai rapport, partage, SMTP, inscription, acceptation,
+403 du lecteur en HTTP direct, changement de rôle, retrait et 404 du rapport après
+retrait, refus du départ du dernier administrateur. Débordement horizontal absent
+aux largeurs 1440, 390 et 320 pixels. Aucune donnée fonctionnelle fictive ajoutée.
