@@ -860,3 +860,20 @@ pnpm audit --prod : aucune vulnérabilité connue signalée à cet instant.
 et huit thèmes GitHub renseignés. Archive, exports complets et identifiants locaux
 confirmés ignorés par Git. La CI complète et la politique de PR doivent être
 vertes avant toute fusion ; leurs résultats sont consultables sur la PR de tâche.
+
+La première CI de la PR 16 (41250109285) a réussi les contrôles du socle et les
+tests PostgreSQL, mais échoué dans un scénario Playwright de 2FA : 20 parcours
+réussis, 1 échec confirmé au retry. Après le clic de déconnexion, le test essayait
+immédiatement de remplir « Adresse e-mail » ; la navigation asynchrone n'était
+pas terminée et le sélecteur trouvait la section portant ce titre dans le profil.
+Correction du test : attendre l'URL /login et le titre Connexion, puis cibler
+le rôle textbox pour le champ e-mail. Pas d'attente fixe, de simulation des réponses
+ni d'assouplissement des contrôles 2FA. Aucun code applicatif modifié par ce correctif.
+
+### 1er novembre 2026 — Vérification du correctif de synchronisation
+
+Typage des outils/tests et lint ciblé réussis. Parcours 2FA rejoué localement
+trois fois avec --repeat-each 3 --retries 0 : 3/3 succès en 1,2 minute, avec les
+vrais services de test et sans changement des réponses ou des contrôles de session.
+La première CI avait aussi confirmé 192/192 intégrations PostgreSQL. La correction
+est poussée sur la même branche pour relancer tous les contrôles avant fusion.
