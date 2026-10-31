@@ -183,6 +183,8 @@ describe('Comptes et sécurité — PostgreSQL et SMTP réels', () => {
   });
   it('refuse le callback dans un autre navigateur et ne lie jamais par correspondance d’e-mail', async () => {
     await verified(); jest.spyOn(app.get(OAuthService), 'identity').mockResolvedValue({ subject: '999999', login: 'unlinked' });
+    // A public provider is not a global account identifier: one caller must not exhaust it for everyone.
+    await client.authThrottle.upsert({ where: { keyHash: throttleKey('oauth', 'email', 'GITHUB') }, create: { keyHash: throttleKey('oauth', 'email', 'GITHUB'), count: 10, windowStart: new Date() }, update: { count: 10, windowStart: new Date() } });
     const browser = request.agent(app.getHttpServer()); const start = await browser.get('/api/auth/oauth/GITHUB/start').expect(302); const state = new URL(start.headers.location!).searchParams.get('state')!;
     const wrong = await request(app.getHttpServer()).get(`/api/auth/oauth/GITHUB/callback?state=${state}&code=controlled-code`).expect(302); expect(wrong.headers.location).toContain('oauthError'); expect(await client.oAuthFlow.count({ where: { tokenHash: digest(state) } })).toBe(1);
     const result = await browser.get(`/api/auth/oauth/GITHUB/callback?state=${state}&code=controlled-code`).expect(302); expect(result.headers.location).toContain('oauthError'); await browser.get('/api/auth/me').expect(401); expect(await client.oAuthIdentity.count()).toBe(0);

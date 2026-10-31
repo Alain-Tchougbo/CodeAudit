@@ -29,7 +29,7 @@ export class OAuthService {
   async start(provider: OAuthProvider, request: AuthRequest, response: CookieResponse, link?: { userId: string; authVersion: number }) {
     if (!oauthConfigured(provider)) throw new ServiceUnavailableException({ code: 'OAUTH_NOT_CONFIGURED', message: 'Ce fournisseur OAuth n’est pas configuré sur le serveur.' });
     if (!link && sessionToken(request)) throw new ConflictException('Déconnectez-vous avant une connexion externe. Pour associer un compte, utilisez votre profil.');
-    await this.auth.limit(request, 'oauth', link?.userId ?? provider);
+    await this.auth.limit(request, 'oauth', link?.userId);
     const state = randomBytes(32).toString('hex'); const browser = randomBytes(32).toString('hex'); const verifier = randomBytes(32).toString('base64url');
     const prior = browserToken(request);
     await this.database.client.$transaction(async transaction => {
