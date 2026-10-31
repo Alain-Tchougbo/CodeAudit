@@ -1,139 +1,191 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { projectsApi } from '../api/projects';
 import { useResource } from '../composables/useResource';
-
-const route = useRoute();
-const router = useRouter();
-const { data: project, loading, error, reload } = useResource(
-  (signal) => projectsApi.get(String(route.params.id), signal), () => String(route.params.id),
-);
-const confirming = ref(false);
-const deleting = ref(false);
-const deleteError = ref('');
-
+import ProjectAnalyses from '../components/ProjectAnalyses.vue';
+import AnalysisImport from '../components/AnalysisImport.vue';
+import GitAnalysisImport from '../components/GitAnalysisImport.vue';
+import ProjectQualityPolicy from '../components/ProjectQualityPolicy.vue';
+import ProjectApiKeys from '../components/ProjectApiKeys.vue';
+import ProjectRuleProfile from '../components/ProjectRuleProfile.vue';
+import ProjectSharing from '../components/ProjectSharing.vue';
+import ResourceState from '../components/ResourceState.vue';
+import AppIcon from '../components/AppIcon.vue';
+import { date } from '../format';
+const route = useRoute(); const router = useRouter();
+const { data: project, loading, error, reload } = useResource((signal) => projectsApi.get(String(route.params.id), signal), () => String(route.params.id));
+const confirming = ref(false); const deleting = ref(false); const deleteError = ref('');
+const deleteTrigger = ref<HTMLButtonElement>(); const cancelButton = ref<HTMLButtonElement>();
+watch(confirming, async (value) => { await nextTick(); if (value) cancelButton.value?.focus(); else deleteTrigger.value?.focus(); });
 async function remove(): Promise<void> {
-  if (!project.value || deleting.value) return;
-  deleting.value = true;
-  deleteError.value = '';
-  try {
-    await projectsApi.delete(project.value.id);
-    await router.push({ path: '/projects', query: { deleted: '1' } });
-  } catch (cause) {
-    deleteError.value = cause instanceof Error ? cause.message : 'Impossible de supprimer le projet.';
-  } finally { deleting.value = false; }
+  if (!project.value?.permissions.admin || deleting.value) return; deleting.value = true; deleteError.value = '';
+  try { await projectsApi.delete(project.value.id); await router.push({ path: '/projects', query: { deleted: '1' } }); }
+  catch (cause) { deleteError.value = cause instanceof Error ? cause.message : 'Impossible de supprimer le projet.'; }
+  finally { deleting.value = false; }
 }
 </script>
-
 <template>
   <section>
     <RouterLink
       to="/projects"
-      class="underline"
-    >Retour aux projets</RouterLink>
-    <p
-      v-if="loading"
-      role="status"
-      class="mt-6"
-    >
-      Chargement du projet…
-    </p>
-    <div
-      v-else-if="error"
-      role="alert"
-      class="mt-6 text-red-700"
-    >
-      <p>{{ error }}</p>
-      <button
-        class="mt-3 underline"
-        @click="reload"
-      >
-        Réessayer
-      </button>
-    </div>
-    <div
-      v-else-if="project"
-      class="mt-6"
-    >
+      class="back-link"
+    ><AppIcon
+      name="back"
+      :size="16"
+    />Retour aux projets</RouterLink>
+    <ResourceState
+      :loading="loading"
+      :error="error"
+      @retry="reload"
+    />
+    <template v-if="project && !loading && !error">
       <p
         v-if="route.query.created === '1'"
         role="status"
-        class="mb-5 text-green-800"
+        class="notice notice-success"
       >
-        Projet créé.
+        <AppIcon
+          name="check"
+          :size="18"
+        />Projet créé.
       </p>
       <p
         v-if="route.query.updated === '1'"
         role="status"
-        class="mb-5 text-green-800"
+        class="notice notice-success"
       >
-        Projet modifié.
+        <AppIcon
+          name="check"
+          :size="18"
+        />Projet modifié.
       </p>
-      <h1 class="break-words text-3xl font-bold">
-        {{ project.name }}
-      </h1>
-      <p class="mt-5 whitespace-pre-wrap break-words">
-        {{ project.description || 'Aucune description.' }}
-      </p>
-      <dl class="my-6 space-y-2 text-sm text-slate-600">
-        <div>
-          <dt class="inline font-medium">
-            Créé le :
-          </dt><dd class="inline">
-            {{ new Date(project.createdAt).toLocaleString('fr-FR') }}
-          </dd>
+      <div class="page-heading">
+        <div class="min-w-0 flex-1">
+          <p class="eyebrow">
+            Espace projet
+          </p><h1 class="break-words">
+            {{ project.name }}
+          </h1><p class="page-description whitespace-pre-wrap break-words">
+            {{ project.description || 'Aucune description.' }}
+          </p>
+        </div><div class="flex flex-wrap gap-2">
+          <RouterLink
+            v-if="project.permissions.write"
+            :to="`/projects/${project.id}/edit`"
+            class="button-secondary"
+          >Modifier le projet</RouterLink><button
+            v-if="project.permissions.admin"
+            ref="deleteTrigger"
+            :disabled="deleting"
+            class="button-danger"
+            :aria-expanded="confirming"
+            :aria-controls="confirming ? 'delete-confirmation' : undefined"
+            @click="confirming = true"
+          >
+            Supprimer le projet
+          </button>
         </div>
+      </div>
+      <dl class="mb-8 flex flex-wrap gap-x-8 gap-y-3 border-b border-[#dfe5df] pb-6 text-xs text-slate-500">
         <div>
-          <dt class="inline font-medium">
-            Modifié le :
-          </dt><dd class="inline">
-            {{ new Date(project.updatedAt).toLocaleString('fr-FR') }}
+          <dt class="inline">
+            Créé le
+          </dt><dd class="inline text-slate-700">
+            {{ date(project.createdAt) }}
+          </dd>
+        </div><div>
+          <dt class="inline">
+            Modifié le
+          </dt><dd class="inline text-slate-700">
+            {{ date(project.updatedAt) }}
           </dd>
         </div>
       </dl>
-      <div class="flex flex-wrap gap-4">
-        <RouterLink
-          :to="`/projects/${project.id}/edit`"
-          class="rounded bg-slate-900 px-4 py-2 text-white"
-        >Modifier le projet</RouterLink>
-        <button
-          :disabled="deleting"
-          class="rounded border border-red-300 px-4 py-2 text-red-800"
-          @click="confirming = true"
-        >
-          Supprimer le projet
-        </button>
-      </div>
-      <div
+      <section
         v-if="confirming"
-        class="mt-6 rounded border border-red-200 bg-red-50 p-5"
+        id="delete-confirmation"
+        class="notice notice-error block p-5"
+        aria-label="Confirmation de suppression"
+        @keydown.esc="confirming = false"
       >
-        <p>Supprimer définitivement ce projet et ses analyses terminées ? Cette action est irréversible.</p>
-        <div class="mt-4 flex gap-4">
+        <h2 class="font-semibold">
+          Supprimer ce projet ?
+        </h2><p class="mt-2 text-sm">
+          Supprimer définitivement ce projet et ses analyses terminées ? Cette action est irréversible.
+        </p>
+        <div class="mt-4 flex flex-wrap gap-3">
           <button
             :disabled="deleting"
-            class="rounded bg-red-800 px-4 py-2 text-white disabled:opacity-50"
+            class="button-danger"
             @click="remove"
           >
             {{ deleting ? 'Suppression…' : 'Confirmer la suppression' }}
-          </button>
-          <button
+          </button><button
+            ref="cancelButton"
             :disabled="deleting"
-            class="underline"
+            class="button-secondary"
             @click="confirming = false"
           >
             Annuler
           </button>
         </div>
-      </div>
+      </section>
       <p
         v-if="deleteError"
         role="alert"
-        class="mt-4 text-red-700"
+        class="notice notice-error"
       >
         {{ deleteError }}
       </p>
-    </div>
+      <p
+        v-if="project.team"
+        class="notice mb-6"
+      >
+        Projet partagé avec <RouterLink
+          :to="`/teams/${project.team.id}`"
+          class="text-link"
+        >{{ project.team.name }}</RouterLink>.
+      </p>
+      <p
+        v-if="!project.permissions.write"
+        role="status"
+        class="notice notice-warning mb-6"
+      >
+        Accès en lecture seule. Vous pouvez consulter les analyses et télécharger les rapports.
+      </p>
+      <ProjectSharing
+        v-if="!project.team && project.permissions.admin"
+        :key="`sharing-${project.id}`"
+        :project-id="project.id"
+        @updated="reload"
+      />
+      <ProjectRuleProfile
+        :key="`profile-${project.id}`"
+        :project-id="project.id"
+        :can-edit="project.permissions.admin"
+      />
+      <AnalysisImport
+        v-if="project.permissions.write"
+        :key="project.id"
+        :project-id="project.id"
+      />
+      <GitAnalysisImport
+        v-if="project.permissions.write"
+        :key="`git-${project.id}`"
+        :project-id="project.id"
+      />
+      <ProjectQualityPolicy
+        :key="`quality-${project.id}`"
+        :project-id="project.id"
+        :can-edit="project.permissions.admin"
+      />
+      <ProjectApiKeys
+        v-if="project.permissions.write"
+        :key="`keys-${project.id}`"
+        :project-id="project.id"
+      />
+      <ProjectAnalyses :project-id="project.id" />
+    </template>
   </section>
 </template>

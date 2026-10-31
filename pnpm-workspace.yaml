@@ -8,3 +8,8 @@ allowBuilds:
   '@parcel/watcher': true
   unrs-resolver: true
 workspaceConcurrency: 1
+overrides:
+  # GHSA-g3hv-75wg-m249; named API used by ESLint/typescript-eslint and glob.
+  minimatch: 11.0.1
+  # GHSA-q7qp-rjg7-q26m: keep Nest 11 while using the patched multipart parser.
+  '@nestjs/platform-express>multer': 2.5.0

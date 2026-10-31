@@ -2,13 +2,17 @@ import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import request from 'supertest';
+import requestLibrary from 'supertest';
+import { signedIn, clearTestThrottle } from './auth-helper';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/configure-app';
 import { PrismaService } from '../../src/database/prisma.service';
 
 describe('Projets : API et PostgreSQL réel', () => {
   let app: INestApplication;
+  let api: ReturnType<typeof requestLibrary.agent>;
+  let userId: string;
+  let email: string;
   let database: PrismaService;
   const ids = new Set<string>();
   const prefix = `integration-${randomUUID()}-`;
@@ -25,12 +29,14 @@ describe('Projets : API et PostgreSQL réel', () => {
     configureApp(app);
     await app.init();
     database = app.get(PrismaService);
+    ({ api, userId, email } = await signedIn(app));
   });
 
   afterAll(async () => {
     try {
       if (database) await database.client.project.deleteMany({ where: { id: { in: [...ids] } } });
     } finally {
+      if (database && userId) { await database.client.user.deleteMany({ where: { id: userId } }); await clearTestThrottle(database.client, [email]); }
       if (app) await app.close();
       if (previousUrl === undefined) delete process.env.DATABASE_URL;
       else process.env.DATABASE_URL = previousUrl;
@@ -38,14 +44,14 @@ describe('Projets : API et PostgreSQL réel', () => {
   });
 
   async function create(suffix = 'projet') {
-    const response = await request(app.getHttpServer()).post('/api/projects')
+    const response = await api.post('/api/projects')
       .send({ name: prefix + suffix, description: 'Description initiale' }).expect(201);
     ids.add(response.body.id as string);
     return response.body as { id: string; name: string; description: string; createdAt: string; updatedAt: string };
   }
 
   it('crée et persiste un projet normalisé avec UUID et dates', async () => {
-    const response = await request(app.getHttpServer()).post('/api/projects')
+    const response = await api.post('/api/projects')
       .send({ name: `  ${prefix}normalisé  `, description: '   ' }).expect(201);
     ids.add(response.body.id as string);
     expect(response.body).toMatchObject({ name: prefix + 'normalisé', description: null });
@@ -57,9 +63,9 @@ describe('Projets : API et PostgreSQL réel', () => {
 
   it('liste et consulte les projets persistés', async () => {
     const project = await create('lecture');
-    const list = await request(app.getHttpServer()).get('/api/projects').expect(200);
+    const list = await api.get('/api/projects').expect(200);
     expect(list.body).toEqual(expect.arrayContaining([expect.objectContaining({ id: project.id })]));
-    await request(app.getHttpServer()).get(`/api/projects/${project.id}`).expect(200).expect(project);
+    await api.get(`/api/projects/${project.id}`).expect(200).expect(project);
   });
 
   it('accepte des noms identiques : seul l’identifiant est unique', async () => {
@@ -70,10 +76,10 @@ describe('Projets : API et PostgreSQL réel', () => {
 
   it('modifie partiellement et permet d’effacer la description', async () => {
     const project = await create('modification');
-    const updated = await request(app.getHttpServer()).patch(`/api/projects/${project.id}`)
+    const updated = await api.patch(`/api/projects/${project.id}`)
       .send({ description: null }).expect(200);
     expect(updated.body).toMatchObject({ name: project.name, description: null, createdAt: project.createdAt });
-    const renamed = await request(app.getHttpServer()).patch(`/api/projects/${project.id}`)
+    const renamed = await api.patch(`/api/projects/${project.id}`)
       .send({ name: ` ${prefix}renommé ` }).expect(200);
     expect(renamed.body.name).toBe(prefix + 'renommé');
     expect(renamed.body.description).toBeNull();
@@ -85,7 +91,7 @@ describe('Projets : API et PostgreSQL réel', () => {
     { name: 'ok', description: 'x'.repeat(2001) }, { name: 'ok', unknown: true },
     [],
   ])('rejette les données de création invalides (%j)', async (body) => {
-    const response = await request(app.getHttpServer()).post('/api/projects').send(body).expect(400);
+    const response = await api.post('/api/projects').send(body).expect(400);
     expect(response.body.code).toBe('VALIDATION_ERROR');
     expect(response.body.requestId).toBeTruthy();
   });
@@ -93,33 +99,33 @@ describe('Projets : API et PostgreSQL réel', () => {
   it.each([{}, { name: null }, { name: '  ' }, { description: 7 }, { unknown: true }])(
     'rejette une modification invalide (%j)', async (body) => {
       const project = await create('invalide');
-      await request(app.getHttpServer()).patch(`/api/projects/${project.id}`).send(body).expect(400);
+      await api.patch(`/api/projects/${project.id}`).send(body).expect(400);
       expect((await database.client.project.findUniqueOrThrow({ where: { id: project.id } })).name).toBe(project.name);
     },
   );
 
   it.each(['get', 'patch', 'delete'] as const)('renvoie 404 pour %s d’un UUID inexistant', async (method) => {
-    const operation = request(app.getHttpServer())[method](`/api/projects/${randomUUID()}`);
+    const operation = api[method](`/api/projects/${randomUUID()}`);
     if (method === 'patch') operation.send({ name: 'Projet' });
     const response = await operation.expect(404);
     expect(response.body.code).toBe('PROJECT_NOT_FOUND');
   });
 
   it('rejette un identifiant mal formé', async () => {
-    await request(app.getHttpServer()).get('/api/projects/pas-un-uuid').expect(400);
+    await api.get('/api/projects/pas-un-uuid').expect(400);
   });
 
   it('supprime un projet et renvoie 404 ensuite', async () => {
     const project = await create('suppression');
-    await request(app.getHttpServer()).delete(`/api/projects/${project.id}`).expect(204).expect('');
+    await api.delete(`/api/projects/${project.id}`).expect(204).expect('');
     expect(await database.client.project.findUnique({ where: { id: project.id } })).toBeNull();
-    await request(app.getHttpServer()).delete(`/api/projects/${project.id}`).expect(404);
+    await api.delete(`/api/projects/${project.id}`).expect(404);
   });
 
   it.each(['QUEUED', 'RUNNING'] as const)('refuse la suppression avec une analyse %s', async (status) => {
     const project = await create('actif');
     await database.client.analysis.create({ data: { projectId: project.id, status } });
-    const response = await request(app.getHttpServer()).delete(`/api/projects/${project.id}`).expect(409);
+    const response = await api.delete(`/api/projects/${project.id}`).expect(409);
     expect(response.body.code).toBe('PROJECT_BUSY');
     expect(await database.client.project.findUnique({ where: { id: project.id } })).not.toBeNull();
   });
@@ -129,7 +135,7 @@ describe('Projets : API et PostgreSQL réel', () => {
     await database.client.analysis.createMany({
       data: [{ projectId: project.id, status: 'SUCCEEDED' }, { projectId: project.id, status: 'FAILED' }],
     });
-    await request(app.getHttpServer()).delete(`/api/projects/${project.id}`).expect(204);
+    await api.delete(`/api/projects/${project.id}`).expect(204);
     expect(await database.client.analysis.count({ where: { projectId: project.id } })).toBe(0);
   });
 

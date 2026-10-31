@@ -1,6 +1,7 @@
 name: CI
 on:
   push:
+    branches: [main, staging]
   pull_request:
 permissions:
   contents: read
@@ -12,6 +13,8 @@ jobs:
       POSTGRES_DB: codeaudit_test
       DATABASE_URL: postgresql://codeaudit:codeaudit@127.0.0.1:5432/codeaudit_test?schema=public
       TEST_DATABASE_URL: postgresql://codeaudit:codeaudit@127.0.0.1:5432/codeaudit_test?schema=public
+      TEST_SMTP_PORT: '1026'
+      TEST_MAILPIT_API_URL: http://127.0.0.1:8026
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -22,14 +25,26 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod
       - run: pnpm check
       - run: docker compose config --quiet
       - run: pnpm db:up
+      - run: pnpm mail:up
       - run: pnpm db:migrate
       - run: pnpm db:check
       - run: pnpm test:integration
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+      - name: Keep browser test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Stop PostgreSQL
         if: always()
         run: pnpm db:down

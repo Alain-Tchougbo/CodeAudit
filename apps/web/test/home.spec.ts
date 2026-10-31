@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import type { Project } from '@codeaudit/contracts';
 import { ProjectApiError, projectsApi } from '../src/api/projects';
+import { analysesApi } from '../src/api/analyses';
 import ProjectsListView from '../src/views/ProjectsListView.vue';
 import ProjectCreateView from '../src/views/ProjectCreateView.vue';
 import ProjectDetailView from '../src/views/ProjectDetailView.vue';
@@ -10,6 +11,7 @@ import ProjectEditView from '../src/views/ProjectEditView.vue';
 
 // Jeux de tests uniquement : aucune donnée de démonstration dans les écrans.
 const project: Project = {
+  team: null, permissions: { write: true, admin: true },
   id: 'a0467b83-7961-4ec3-b003-d91ec82f82c0',
   name: 'Projet de test', description: 'Description de test',
   createdAt: '2026-10-30T08:00:00.000Z', updatedAt: '2026-10-30T08:00:00.000Z',
@@ -34,6 +36,7 @@ async function screen(path = '/projects') {
 }
 
 beforeEach(() => {
+  vi.spyOn(analysesApi, 'history').mockResolvedValue({ items: [], nextCursor: null });
   vi.spyOn(projectsApi, 'list').mockResolvedValue([]);
   vi.spyOn(projectsApi, 'get').mockResolvedValue(project);
   vi.spyOn(projectsApi, 'create').mockResolvedValue(project);
@@ -46,6 +49,16 @@ afterEach(() => {
 });
 
 describe('Liste des projets', () => {
+  it('recherche dans le nom et la description sans nouvel appel API et permet de réinitialiser', async () => {
+    vi.mocked(projectsApi.list).mockResolvedValue([project, { ...project, id: 'second', name: 'Autre application', description: 'Service de facturation' }]);
+    const { wrapper } = await screen(); await flushPromises();
+    await wrapper.get('#project-search').setValue(' FACTURATION ');
+    expect(wrapper.findAll('li')).toHaveLength(1); expect(wrapper.text()).toContain('Autre application');
+    await wrapper.get('#project-search').setValue('introuvable');
+    expect(wrapper.text()).toContain('Aucun projet ne correspond'); expect(wrapper.findAll('li')).toHaveLength(0);
+    await wrapper.get('button').trigger('click');
+    expect(wrapper.findAll('li')).toHaveLength(2); expect(projectsApi.list).toHaveBeenCalledTimes(1);
+  });
   it('affiche le chargement puis uniquement les données reçues', async () => {
     let resolve!: (value: Project[]) => void;
     vi.mocked(projectsApi.list).mockReturnValue(new Promise((done) => { resolve = done; }));

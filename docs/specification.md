@@ -1,15 +1,21 @@
 # Spécification MVP — CodeAudit
 
 Statut : projets, moteur, import ZIP, file PostgreSQL et worker disponibles.
-Les écrans des analyses et les filtres de diagnostics restent à réaliser.
+Le tableau de bord, le suivi et les filtres de diagnostics sont disponibles.
+Le formulaire de lancement ZIP est disponible dans la fiche projet.
 
 ## Objectif et périmètre
 
-Application locale mono-utilisateur d'audit statique JavaScript et TypeScript.
+Application d'audit statique JavaScript et TypeScript avec comptes, projets personnels
+et partage explicite en équipes avec rôles.
 Le MVP couvre les projets, l'import ZIP, les analyses asynchrones, les résultats
 détaillés, les indicateurs, l'historique et l'export JSON.
-Pas d'intégration Git, d'authentification publique, de correction automatique,
-d'exécution des sources ni d'installation des dépendances des projets importés.
+Les évolutions validées ajoutent comparaison, extraits facultatifs, récupération du
+compte et sessions, profils maîtrisés, annulation, imports GitHub publics, seuils
+qualité et CI, puis équipes. Les imports Git et équipes étendent le périmètre
+initial sans correction automatique, exécution des sources ni installation des
+dépendances des projets importés. Voir [import Git](git-import.md), [CI](ci.md)
+et [équipes et droits](teams.md) pour les contrats et limites.
 
 ## Architecture retenue
 
@@ -33,14 +39,25 @@ Un répertoire de travail distinct est réservé à chaque analyse.
 
 ## Modèle et états prévus
 
-Project : identifiant, nom, description, dates.
+User : profil, adresse unique normalisée, hash scrypt ; sessions persistées et quotas.
+Le module [comptes et sécurité](account-security.md) ajoute vérification d'adresse,
+version d'authentification, TOTP chiffré, codes de secours hachés, identités et flux
+OAuth, événements et export personnel. Les comptes existants restent non vérifiés
+jusqu'à preuve e-mail ; aucune identité externe n'est associée par correspondance
+d'adresse. Les rapports partagés restent aux équipes après suppression d'un compte.
+Project : identifiant, nom, description, dates, propriétaire et équipe facultative ; anciens projets
+non attribués invisibles. Voir docs/authentication.md pour les contrôles et la migration.
+Team, TeamMember et TeamInvitation : rôles ADMIN/MEMBER/READER, adhésion courante
+et lien e-mail à usage unique. Pour un projet partagé, les droits reposent sur
+l'adhésion plutôt que sur le créateur historique. Voir [les équipes](teams.md).
 Analysis : projet, état, horodatages, empreinte des sources, profil et versions
 du moteur, compteurs, erreur technique, réservation et référence temporaire.
 Les diagnostics sont inclus dans le rapport JSONB de l'analyse : chemin relatif,
 ligne et colonne facultatives, règle nullable, gravité, message et erreur de parsing.
 Les nouvelles tentatives ont des identifiants distincts, sans lien dédié en MVP.
 
-États : QUEUED → RUNNING → SUCCEEDED ou FAILED.
+États : QUEUED → RUNNING → SUCCEEDED ou FAILED ; QUEUED/RUNNING peuvent aussi
+aboutir à CANCELLED sur demande explicite d'un utilisateur disposant du droit d'écriture.
 Une analyse terminée avec des problèmes de code est SUCCEEDED.
 Une erreur de syntaxe est un diagnostic ; un délai dépassé ou un crash est un échec technique.
 Une nouvelle tentative produit une nouvelle analyse ; les résultats terminaux sont immuables.
@@ -49,7 +66,8 @@ Aucun fichier pris en charge : rejet avant création d'un travail exécutable.
 
 La file utilise une réservation atomique PostgreSQL, une durée de réservation,
 un heartbeat et un jeton de propriété. Un worker ayant perdu sa réservation ne peut
-plus finaliser le rapport. Une réservation expirée devient FAILED avec un code explicite ;
+plus finaliser le rapport. Une réservation expirée devient FAILED avec un code explicite
+(CANCELLED si une annulation était demandée) ;
 la reprise utilisateur crée une nouvelle tentative. Pas de relance automatique en MVP.
 La concurrence initiale est de 1.
 La file et ces garanties sont implémentées et testées avec PostgreSQL réel.
@@ -97,20 +115,28 @@ Ces protections sont implémentées dans packages/analysis-jobs ; détails et li
 effectives dans [l'exécution des analyses](analyses.md). Les threads ont des limites
 V8 mais aucune limite RSS globale ni isolation réseau n'est imposée actuellement.
 
-Ne pas persister les sources dans PostgreSQL ni les inclure dans les logs et exports.
+Ne pas persister les archives ou arborescences importées dans PostgreSQL, ni inclure
+du code source dans les logs et exports JSON existants. L'aperçu facultatif est une
+exception explicite et bornée : après consentement à l'import, des extraits autour
+des diagnostics sont stockés séparément du rapport, accessibles uniquement via
+l'API protégée et supprimables sans retirer les diagnostics. Cette option est
+désactivée par défaut. Les fichiers temporaires complets sont toujours supprimés.
 Les rapports et métadonnées restent jusqu'à suppression explicite.
 Supprimer un projet entraîne la suppression transactionnelle de ses rapports ;
 refuser cette opération tant qu'un travail est QUEUED ou RUNNING.
 Une nouvelle analyse nécessite un nouvel import après suppression des sources.
 
-## API et interface futures
+## API et interface
 
-Routes prévues sous /api :
+Routes disponibles sous /api :
 - POST/GET /projects ; GET/PATCH/DELETE /projects/:id ;
 - POST /projects/:id/analyses (ZIP), GET /projects/:id/analyses ;
-- GET /analyses/:id ; GET /analyses/:id/results (rapport JSON, SUCCEEDED uniquement).
-La pagination et les filtres de diagnostics ainsi qu'un endpoint d'export dédié
-restent à développer. Le rapport complet est déjà récupérable en JSON.
+- GET /analyses/:id ; GET /analyses/:id/results (rapport du moteur, SUCCEEDED uniquement).
+- GET /analyses/:id/report (export JSON versionné avec instantané du projet).
+- GET /dashboard (compteurs réels et dix dernières analyses).
+Les filtres de diagnostics et leur pagination sont disponibles côté navigateur.
+Un endpoint de filtrage/pagination serveur reste à développer. Le rapport complet
+est téléchargeable en JSON ; les instantanés historiques sont décrits dans docs/report-export.md.
 
 GET /health indique que le processus HTTP répond
 et ne garantit pas l'accès à PostgreSQL. Vite transmet /api/health à /health en local.
@@ -119,6 +145,33 @@ Indicateurs : fichiers analysés/ignorés, erreurs, avertissements, fichiers con
 durée. Pas de score global non défini.
 Export : schemaVersion, métadonnées, profil/moteur, indicateurs et diagnostics.
 Erreurs API : code stable, message lisible, identifiant de requête ; aucune stack exposée.
+
+## Direction visuelle et ergonomie
+
+L'interface adopte une identité « atelier de code » : navigation vert profond,
+fond clair légèrement chaud et accents menthe. Les rouges, ocres et bleus servent
+aux diagnostics et aux états, accompagnés de textes et d'icônes. Aucun score ou
+pourcentage d'avancement n'est inventé à partir d'un état du worker.
+
+Les variables de couleurs, surfaces, typographie, rayons, focus et champs sont
+centralisées dans apps/web/src/style.css. Les espacements suivent l'échelle
+Tailwind de quatre pixels. Les fontes système et monospace restent locales ;
+aucune police distante ni bibliothèque d'icônes supplémentaire n'est requise.
+AppIcon fournit une famille SVG homogène ; EmptyState, ResourceState, MetricCard,
+AnalysisStatus et AnalysisProgress composent les écrans sans logique métier dupliquée.
+
+Sur ordinateur, la navigation latérale donne un repère permanent. Sur tablette
+et mobile, elle devient une navigation compacte qui reste accessible sans menu
+masqué. La liste des projets recherche dans les noms/descriptions réellement reçus
+de l'API. Les diagnostics conservent leur tableau sur ordinateur et deviennent
+des fiches sur téléphone, avec les mêmes filtres et pages. L'export ne dépend
+pas des filtres : il contient toujours le rapport complet enregistré.
+
+Les liens d'évitement, titres de document, focus après navigation, labels de
+formulaires, états annoncés, confirmation de suppression avec retour du focus
+et fermeture par Échap font partie du parcours. Les transitions et animations
+respectent prefers-reduced-motion. Les contrôles automatisés et captures Chromium
+complètent, sans remplacer, une revue avec lecteurs d'écran et autres navigateurs.
 
 ## Lots et critères d'acceptation futurs
 

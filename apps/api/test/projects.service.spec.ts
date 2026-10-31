@@ -15,7 +15,7 @@ describe('Suppression de projet', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
-    transaction.project.findUnique.mockResolvedValue({ id: 'project' });
+    transaction.project.findUnique.mockResolvedValue({ id: 'project', ownerId: 'owner', teamId: null, team: null });
     transaction.analysis.count.mockResolvedValue(0);
     transaction.project.delete.mockResolvedValue({});
     runTransaction.mockImplementation((work: (value: typeof transaction) => Promise<void>) => work(transaction));
@@ -23,19 +23,19 @@ describe('Suppression de projet', () => {
 
   it('refuse une ressource absente avant toute suppression', async () => {
     transaction.project.findUnique.mockResolvedValue(null);
-    await expect(service.delete('missing')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.delete('missing', 'owner')).rejects.toBeInstanceOf(NotFoundException);
     expect(transaction.project.delete).not.toHaveBeenCalled();
   });
 
   it('préserve un projet ayant une analyse active', async () => {
     transaction.analysis.count.mockResolvedValue(1);
-    await expect(service.delete('project')).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.delete('project', 'owner')).rejects.toBeInstanceOf(ConflictException);
     expect(transaction.project.delete).not.toHaveBeenCalled();
   });
 
   it('supprime un projet sans analyse active en transaction sérialisable', async () => {
-    await service.delete('project');
-    expect(transaction.project.delete).toHaveBeenCalledWith({ where: { id: 'project' } });
+    await service.delete('project', 'owner');
+    expect(transaction.project.delete).toHaveBeenCalledWith({ where: { id: 'project', AND: { OR: [{ ownerId: 'owner', teamId: null }, { team: { members: { some: { userId: 'owner', role: 'ADMIN' } } } }] } } });
     expect(runTransaction).toHaveBeenCalledWith(expect.any(Function), {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
@@ -44,14 +44,14 @@ describe('Suppression de projet', () => {
   it('réévalue les analyses après un conflit de sérialisation', async () => {
     runTransaction.mockRejectedValueOnce(conflict());
     transaction.analysis.count.mockResolvedValue(1);
-    await expect(service.delete('project')).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.delete('project', 'owner')).rejects.toBeInstanceOf(ConflictException);
     expect(runTransaction).toHaveBeenCalledTimes(2);
     expect(transaction.project.delete).not.toHaveBeenCalled();
   });
 
   it('borne les reprises en cas de modifications concurrentes répétées', async () => {
     runTransaction.mockRejectedValue(conflict());
-    await expect(service.delete('project')).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.delete('project', 'owner')).rejects.toBeInstanceOf(ConflictException);
     expect(runTransaction).toHaveBeenCalledTimes(3);
   });
 });

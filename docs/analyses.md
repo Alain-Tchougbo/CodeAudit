@@ -1,5 +1,63 @@
 # Exécution des analyses
 
+## Aperçu facultatif du code
+
+POST /api/projects/:id/analyses accepte le champ multipart captureContext=true ou
+false en plus du ZIP. Par défaut false. Les autres champs sont refusés. Le worker
+enregistre les extraits avec le rapport avant le nettoyage des sources ; la migration
+20261031000200_code_context ajoute captureContext et codeContext dans Analysis.
+Les rapports existants restent sans extraits et leurs exports JSON ne changent pas.
+
+GET /api/analyses/:id/context retourne requested et context après une réussite.
+DELETE /api/analyses/:id/context supprime tous les extraits de cette analyse et
+retourne 204, sans modifier son rapport. Les deux routes contrôlent le propriétaire ;
+la suppression exige CSRF et est refusée pendant un travail actif. Un contexte
+corrompu est refusé par validation de schéma et de taille.
+
+Capture : au plus les 100 premiers diagnostics positionnés, rayon de trois lignes,
+128 Kio lus par fichier, 2 Mio lus au total, lignes de 500 caractères et enveloppe
+JSON de 128 Kio maximum. Les lignes communes sont fusionnées. Les chemins traversants,
+absolus et symboliques sont refusés. Aucune source n'est exécutée ; l'aperçu effectue
+seulement des lectures bornées. L'interface indique les extraits tronqués ou absents.
+Les délais et annulations du traitement restent applicables.
+
+Le consentement signale que les extraits peuvent contenir des informations sensibles.
+Ils suivent la conservation du rapport jusqu'à suppression explicite ou suppression
+du projet. Les fichiers sources temporaires restent supprimés après traitement.
+Le frontend charge les extraits à la demande, partage la requête entre les diagnostics
+affichés, échappe le texte et propose une coloration lexicale JS/TS simple (pas un
+parseur complet). Aucune requête ne relit un chemin source arbitraire après traitement.
+
+## Comparaison des rapports enregistrés
+
+GET /api/analyses/:targetId/comparison?baselineId=UUID exige une session. Les deux
+analyses sont recherchées avec le propriétaire connecté avant tout autre contrôle.
+Une ressource absente ou étrangère renvoie 404. Identifiants invalides, analyses
+identiques ou projets différents donnent 400 ; analyses non réussies, rapports
+invalides/incohérents ou configurations différentes donnent 409.
+
+La réponse schemaVersion=1 et matchingVersion=file-rule-message-v1 comprend les
+références des deux analyses, diagnostics ajoutés/résolus/persistants, positions
+avant/après, compteurs et écarts cible moins référence. Les ensembles de fichiers
+nouvellement analysés et plus analysés expliquent les changements de couverture.
+Le calcul ne relance pas le moteur, n'écrit rien en base et n'utilise pas de sources.
+Les exports d'origine restent inchangés. Aucune migration n'est nécessaire.
+
+Le même profil complet (versions des moteurs comprises) et les mêmes limites
+sont exigés. Le rapprochement utilise fichier/règle/type/gravité/message. Il conserve
+la multiplicité, apparie d'abord les positions de début exactes, puis les occurrences
+restantes ordonnées par ligne/colonne. Il tolère les décalages de lignes, sans suivre
+les renommages. Un changement de message, règle, type ou gravité apparaît comme
+une disparition et un ajout. Les correspondances entre occurrences identiques
+restent heuristiques, sans preuve d'identité du code.
+
+« Résolu » signifie absent du rapport cible : une suppression ou exclusion de fichier
+peut aussi produire ce résultat. Les positions des résolus viennent de la référence,
+celles des nouveaux/persistants de la cible. Les diagnostics complets sont renvoyés
+et filtrés/paginés dans le navigateur, comme les résultats actuels ; une pagination
+serveur reste une évolution pour les gros rapports. Les limites de taille des rapports
+de chaque analyse s'appliquent toujours.
+
 L'API importe un ZIP, valide et extrait ses sources avant de créer un travail
 QUEUED dans PostgreSQL. Le worker est un processus indépendant. Les règles et le
 moteur restent dans `packages/analyzer`, sans dépendance envers la file ni Prisma.
@@ -31,25 +89,29 @@ Ce n'est pas un déploiement distribué sur plusieurs machines.
 | GET | `/api/analyses/:id/results` | Rapport JSON complet, uniquement après SUCCEEDED ; sinon 409 |
 
 Exemple avec un projet déjà créé, depuis PowerShell :
+se connecter d'abord selon [le guide d'authentification](authentication.md) pour
+obtenir `$http`, `$cookieHeader` et `$csrfToken`. Un appel anonyme retourne 401.
 
 ```powershell
 $projectId = 'REMPLACER_PAR_UUID_PROJET'
-$queued = curl.exe --fail-with-body -s -F 'archive=@C:/sources/projet.zip' "http://127.0.0.1:3000/api/projects/$projectId/analyses" | ConvertFrom-Json
-Invoke-RestMethod "http://127.0.0.1:3000/api/analyses/$($queued.id)"
-Invoke-RestMethod "http://127.0.0.1:3000/api/projects/$projectId/analyses"
+$queued = curl.exe --fail-with-body -s -H "Cookie: $cookieHeader" -H 'X-CodeAudit-Request: 1' -H "X-CSRF-Token: $csrfToken" -F 'archive=@C:/sources/projet.zip' "http://127.0.0.1:3000/api/projects/$projectId/analyses" | ConvertFrom-Json
+Invoke-RestMethod "http://127.0.0.1:3000/api/analyses/$($queued.id)" -WebSession $http
+Invoke-RestMethod "http://127.0.0.1:3000/api/projects/$projectId/analyses" -WebSession $http
 # Après passage à SUCCEEDED :
-curl.exe --fail-with-body -o rapport.json "http://127.0.0.1:3000/api/analyses/$($queued.id)/results"
+Invoke-WebRequest -UseBasicParsing -WebSession $http -OutFile rapport.json "http://127.0.0.1:3000/api/analyses/$($queued.id)/results"
 ```
 
 Les UUID invalides, archives absentes ou dangereuses sont rejetés ; ressource
 inexistante : 404 ; limite de taille : 413 ; deux extractions déjà en cours dans
 une instance API : 429. Le nom et le type MIME fournis ne sont pas considérés
 comme une preuve de validité du ZIP. Les chemins internes et jetons de réservation
-ne sont pas exposés. Les écrans de lancement/suivi des analyses restent à développer.
+ne sont pas exposés. Le tableau de bord, le suivi, l'historique et les résultats
+sont consultables dans Vue ; le formulaire ZIP de chaque projet lance une demande réelle.
+Voir [les interfaces de consultation](consultation.md).
 
 ## File, concurrence et interruption
 
-États : `QUEUED → RUNNING → SUCCEEDED | FAILED`.
+États : `QUEUED → RUNNING → SUCCEEDED | FAILED`, ou `CANCELLED` sur demande.
 Des diagnostics ESLint, y compris erreurs de syntaxe, donnent SUCCEEDED lorsque
 le moteur a produit un rapport. FAILED signifie un échec technique.
 
@@ -64,7 +126,7 @@ uniquement si le jeton, l'état et les échéances sont encore valides.
 
 Un ancien worker ne peut ni renouveler un bail expiré ni publier tardivement.
 Au démarrage puis entre les travaux, avec un intervalle minimal de 5 secondes,
-les RUNNING expirés deviennent FAILED
+les RUNNING expirés deviennent FAILED (CANCELLED si une annulation était demandée)
 avec WORKER_INTERRUPTED ou ANALYSIS_TIMEOUT. Ils ne sont jamais remis en QUEUED :
 un même identifiant n'est donc jamais exécuté par deux workers, même si le premier
 processus reprend après une pause. Les QUEUED persistés sont traités au redémarrage.

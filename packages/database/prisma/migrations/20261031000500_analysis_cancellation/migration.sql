@@ -1,0 +1,2 @@
+ALTER TYPE "AnalysisStatus" ADD VALUE 'CANCELLED';
+ALTER TABLE "Analysis" ADD COLUMN "cancelRequestedAt" TIMESTAMPTZ(3);

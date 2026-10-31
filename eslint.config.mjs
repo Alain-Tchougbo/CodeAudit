@@ -4,7 +4,7 @@ import vue from 'eslint-plugin-vue';
 import globals from 'globals';
 
 export default tseslint.config(
-  { ignores: ['packages/analysis-jobs/test/fixtures/**', 'packages/analyzer/test/fixtures/**', '**/dist/**', '**/node_modules/**', '**/coverage/**', '**/generated/**', 'playwright-report/**', 'test-results/**'] },
+  { ignores: ['.tmp/**', 'packages/analysis-jobs/test/fixtures/**', 'packages/analyzer/test/fixtures/**', '**/dist/**', '**/node_modules/**', '**/coverage/**', '**/generated/**', 'playwright-report/**', 'test-results/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...vue.configs['flat/recommended'],

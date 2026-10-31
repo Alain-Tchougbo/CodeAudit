@@ -1,0 +1,32 @@
+name: CodeAudit quality gate
+description: Submit a ZIP to your CodeAudit API and enforce its recorded quality policy.
+inputs:
+  api-url:
+    description: CodeAudit API origin, HTTPS except local loopback.
+    required: true
+  project-id:
+    description: CodeAudit project UUID.
+    required: true
+  archive:
+    description: Path to the ZIP archive, limited to 10 MiB.
+    required: true
+  token:
+    description: Scoped CodeAudit API key from a repository secret.
+    required: true
+  report:
+    description: Destination for the exact JSON export and its gate sidecar.
+    default: codeaudit-report.json
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24
+    - shell: bash
+      env:
+        CODEAUDIT_TOKEN: ${{ inputs.token }}
+        CODEAUDIT_API_URL: ${{ inputs.api-url }}
+        CODEAUDIT_PROJECT_ID: ${{ inputs.project-id }}
+        CODEAUDIT_ARCHIVE: ${{ inputs.archive }}
+        CODEAUDIT_REPORT: ${{ inputs.report }}
+      run: node "$GITHUB_ACTION_PATH/../../../tools/codeaudit-ci.mts" --api-url "$CODEAUDIT_API_URL" --project "$CODEAUDIT_PROJECT_ID" --archive "$CODEAUDIT_ARCHIVE" --report "$CODEAUDIT_REPORT"

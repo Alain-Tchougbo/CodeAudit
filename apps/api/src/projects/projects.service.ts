@@ -1,9 +1,13 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, type Project as StoredProject } from '@codeaudit/database';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import { Prisma } from '@codeaudit/database';
 import type { CreateProjectRequest, Project, UpdateProjectRequest } from '@codeaudit/contracts';
 import { PrismaService } from '../database/prisma.service';
+import { projectAccessInclude, projectAdminScope, projectPermissions, projectReadScope, projectWriteScope, requireProjectAccess } from '../access/project-access';
 
-const present = (project: StoredProject): Project => ({
+type AccessibleProject = Prisma.ProjectGetPayload<{ include: ReturnType<typeof projectAccessInclude> }>;
+const present = (project: AccessibleProject, userId: string): Project => ({
+  team: project.team ? { id: project.team.id, name: project.team.name } : null,
+  permissions: projectPermissions(project, userId),
   id: project.id,
   name: project.name,
   description: project.description,
@@ -15,43 +19,41 @@ const present = (project: StoredProject): Project => ({
 export class ProjectsService {
   constructor(private readonly database: PrismaService) {}
 
-  async create(input: CreateProjectRequest): Promise<Project> {
+  async create(input: CreateProjectRequest, ownerId: string): Promise<Project> {
     return present(await this.database.client.project.create({
-      data: { name: input.name, description: input.description || null },
-    }));
+      data: { name: input.name, description: input.description || null, ownerId }, include: projectAccessInclude(ownerId),
+    }), ownerId);
   }
 
-  async list(): Promise<Project[]> {
+  async list(ownerId: string): Promise<Project[]> {
     return (await this.database.client.project.findMany({
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    })).map(present);
+      where: projectReadScope(ownerId), include: projectAccessInclude(ownerId), orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })).map(project => present(project, ownerId));
   }
 
-  async get(id: string): Promise<Project> {
-    const project = await this.database.client.project.findUnique({ where: { id } });
-    if (!project) throw new NotFoundException({ code: 'PROJECT_NOT_FOUND', message: 'Projet introuvable.' });
-    return present(project);
+  async get(id: string, ownerId: string): Promise<Project> {
+    return present(await requireProjectAccess(this.database.client, id, ownerId), ownerId);
   }
 
-  async update(id: string, input: UpdateProjectRequest): Promise<Project> {
+  async update(id: string, input: UpdateProjectRequest, ownerId: string): Promise<Project> {
     if (input.name === undefined && input.description === undefined) {
       throw new BadRequestException('Renseignez au moins une information à modifier.');
     }
+    await requireProjectAccess(this.database.client, id, ownerId, 'write');
     return present(await this.database.client.project.update({
-      where: { id },
+      where: { id, AND: projectWriteScope(ownerId) }, include: projectAccessInclude(ownerId),
       data: {
         ...(input.name !== undefined ? { name: input.name } : {}),
         ...(input.description !== undefined ? { description: input.description || null } : {}),
       },
-    }));
+    }), ownerId);
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, ownerId: string): Promise<void> {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         await this.database.client.$transaction(async (transaction) => {
-          const project = await transaction.project.findUnique({ where: { id }, select: { id: true } });
-          if (!project) throw new NotFoundException({ code: 'PROJECT_NOT_FOUND', message: 'Projet introuvable.' });
+          await requireProjectAccess(transaction, id, ownerId, 'admin');
           const active = await transaction.analysis.count({
             where: { projectId: id, status: { in: ['QUEUED', 'RUNNING'] } },
           });
@@ -61,7 +63,7 @@ export class ProjectsService {
               message: 'Ce projet ne peut pas être supprimé tant qu’une analyse est en attente ou en cours.',
             });
           }
-          await transaction.project.delete({ where: { id } });
+          await transaction.project.delete({ where: { id, AND: projectAdminScope(ownerId) } });
         }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
         return;
       } catch (error) {

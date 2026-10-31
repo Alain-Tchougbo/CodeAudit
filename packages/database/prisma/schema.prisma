@@ -11,17 +11,203 @@ datasource db {
 }
 
 model Project {
+  teamId String? @db.Uuid
+  team Team? @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  qualityPolicy Json?
+  apiKeys ApiKey[]
+  analysisProfileVersion String @default("codeaudit-js-ts-v1") @db.VarChar(120)
   id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name        String     @db.VarChar(120)
   description String?    @db.VarChar(2000)
   createdAt   DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime   @default(now()) @updatedAt @db.Timestamptz(3)
   analyses    Analysis[]
+  ownerId     String?    @db.Uuid
+  owner       User?      @relation(fields: [ownerId], references: [id], onDelete: Restrict)
 
   @@index([createdAt, id])
+  @@index([ownerId, createdAt, id])
+  @@index([teamId, createdAt, id])
+}
+
+model User {
+  authVersion Int @default(0)
+  emailVerifiedAt DateTime? @db.Timestamptz(3)
+  verification EmailVerification?
+  mfa MfaCredential?
+  recoveryCodes MfaRecoveryCode[]
+  identities OAuthIdentity[]
+  oauthFlows OAuthFlow[]
+  securityEvents SecurityEvent[]
+  createdTeams Team[]
+  memberships TeamMember[]
+  sentTeamInvitations TeamInvitation[]
+  apiKeys ApiKey[]
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String    @db.VarChar(120)
+  email        String    @unique @db.VarChar(254)
+  passwordHash String    @db.VarChar(255)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  projects     Project[]
+  sessions     Session[]
+  resetToken   PasswordResetToken?
+}
+
+model Session {
+  authVersion Int @default(0)
+  id         String   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tokenHash  String   @id @db.Char(64)
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  lastSeenAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt  DateTime @db.Timestamptz(3)
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @unique @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique @db.Char(64)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  @@index([expiresAt])
+}
+
+model Team {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String @db.VarChar(120)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  createdById String? @db.Uuid
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  members TeamMember[]
+  invitations TeamInvitation[]
+  projects Project[]
+}
+
+model TeamMember {
+  teamId String @db.Uuid
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role TeamRole @default(MEMBER)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@id([teamId, userId])
+  @@index([userId])
+}
+
+model TeamInvitation {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teamId String @db.Uuid
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  email String @db.VarChar(254)
+  role TeamRole
+  tokenHash String @unique @db.Char(64)
+  invitedById String @db.Uuid
+  invitedBy User @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  @@unique([teamId, email])
+  @@index([expiresAt])
+}
+
+enum TeamRole {
+  ADMIN
+  MEMBER
+  READER
+}
+
+model EmailVerification {
+  userId String @id @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email String @db.VarChar(254)
+  changeEmail Boolean @default(false)
+  authVersion Int
+  tokenHash String @unique @db.Char(64)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  @@index([expiresAt])
+}
+
+model MfaCredential {
+  userId String @id @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secretEncrypted String @db.VarChar(512)
+  enabledAt DateTime? @db.Timestamptz(3)
+  pendingExpiresAt DateTime? @db.Timestamptz(3)
+  lastUsedStep BigInt @default(-1)
+}
+
+model MfaRecoveryCode {
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash String @db.Char(64)
+  @@id([userId, codeHash])
+}
+
+model OAuthIdentity {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider String @db.VarChar(10)
+  subject String @db.VarChar(120)
+  login String @db.VarChar(255)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@unique([provider, subject])
+  @@unique([userId, provider])
+}
+
+model OAuthFlow {
+  tokenHash String @id @db.Char(64)
+  browserHash String @db.Char(64)
+  provider String @db.VarChar(10)
+  purpose String @db.VarChar(10)
+  verifierEncrypted String? @db.VarChar(512)
+  userId String? @db.Uuid
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionHash String? @db.Char(64)
+  authVersion Int?
+  expiresAt DateTime @db.Timestamptz(3)
+  @@index([expiresAt])
+}
+
+model SecurityEvent {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type String @db.VarChar(64)
+  provider String? @db.VarChar(10)
+  sessionId String? @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([userId, createdAt, id])
+}
+
+model ApiKey {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tokenHash String @unique @db.Char(64)
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String @db.Uuid
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name String @db.VarChar(80)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  lastUsedAt DateTime? @db.Timestamptz(3)
+  @@index([userId, projectId])
+  @@index([expiresAt])
+}
+
+model AuthThrottle {
+  keyHash     String   @id @db.Char(64)
+  count       Int
+  windowStart DateTime @db.Timestamptz(3)
+  @@index([windowStart])
 }
 
 model Analysis {
+  qualityPolicySnapshot Json?
   id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   projectId        String         @db.Uuid
   project          Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -30,15 +216,20 @@ model Analysis {
   startedAt        DateTime?      @db.Timestamptz(3)
   finishedAt       DateTime?      @db.Timestamptz(3)
   heartbeatAt      DateTime?      @db.Timestamptz(3)
+  cancelRequestedAt DateTime?     @db.Timestamptz(3)
   leaseExpiresAt   DateTime?      @db.Timestamptz(3)
   deadlineAt       DateTime?      @db.Timestamptz(3)
   lockToken        String?        @unique @db.Uuid
   workerId         String?        @db.VarChar(120)
   sourceKey        String?        @unique @db.Uuid
   sourceDigest     String?        @db.Char(64)
+  sourceMetadata   Json?
+  projectSnapshot  Json?
   sourcesDeletedAt DateTime?      @db.Timestamptz(3)
   profileVersion   String?        @db.VarChar(120)
   report           Json?
+  captureContext   Boolean        @default(false)
+  codeContext      Json?
   statistics       Json?
   errorCode        String?        @db.VarChar(64)
   errorMessage     String?        @db.VarChar(500)
@@ -53,4 +244,5 @@ enum AnalysisStatus {
   RUNNING
   SUCCEEDED
   FAILED
+  CANCELLED
 }

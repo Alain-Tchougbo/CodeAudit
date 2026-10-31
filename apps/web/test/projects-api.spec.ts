@@ -10,8 +10,10 @@ describe('Client HTTP projets', () => {
     vi.stubGlobal('fetch', fetch);
     expect(await projectsApi.create({ name: 'Nom' })).toEqual(project);
     expect(fetch).toHaveBeenCalledWith('/api/projects', expect.objectContaining({
-      method: 'POST', body: JSON.stringify({ name: 'Nom' }), headers: { 'Content-Type': 'application/json' },
+      method: 'POST', body: JSON.stringify({ name: 'Nom' }), credentials: 'same-origin',
     }));
+    expect(fetch.mock.calls[0]![1].headers.get('Content-Type')).toBe('application/json');
+    expect(fetch.mock.calls[0]![1].headers.get('X-CodeAudit-Request')).toBe('1');
   });
 
   it('ne tente pas de lire du JSON après une suppression 204', async () => {

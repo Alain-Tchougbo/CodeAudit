@@ -7,8 +7,11 @@
     "node": ">=24.15.0 <25"
   },
   "scripts": {
+    "demo:prepare": "node tools/prepare-demo.mts",
+    "auth:init-key": "node tools/init-security-key.mts",
+    "audit:ci": "node tools/codeaudit-ci.mts",
     "dev": "pnpm build:packages && pnpm --parallel --filter \"./apps/*\" dev",
-    "lint": "eslint . --max-warnings 0",
+    "lint": "eslint --config eslint.config.mjs . --max-warnings 0",
     "typecheck": "pnpm build:packages && pnpm typecheck:tools && pnpm -r typecheck",
     "build": "pnpm -r build",
     "test": "pnpm -r --if-present test",
@@ -16,7 +19,8 @@
     "test:e2e:install": "playwright install chromium",
     "db:validate": "pnpm --filter @codeaudit/database validate",
     "db:up": "docker compose up -d --wait postgres",
-    "db:down": "docker compose down",
+    "db:down": "docker compose --profile mail down",
+    "mail:up": "docker compose --profile mail up -d --wait mailpit",
     "check": "pnpm lint && pnpm typecheck && pnpm build && pnpm test && pnpm db:validate",
     "build:packages": "pnpm --filter @codeaudit/contracts --filter @codeaudit/analyzer --filter @codeaudit/database --filter @codeaudit/analysis-jobs build",
     "typecheck:tools": "tsc -p tsconfig.tools.json",
