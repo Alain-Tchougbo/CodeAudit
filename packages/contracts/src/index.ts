@@ -11,6 +11,7 @@ export const PROJECT_DESCRIPTION_MAX_LENGTH = 2000;
 export const ANALYSIS_ARCHIVE_MAX_BYTES = 10 * 1024 * 1024;
 export interface AuthUser { id: string; name: string; email: string; createdAt: string }
 export interface AuthProfile { user: AuthUser; csrfToken: string; expiresAt: string }
+export interface ActiveSession { id: string; current: boolean; createdAt: string; lastSeenAt: string; expiresAt: string }
 
 export interface Project {
   id: string;

@@ -11,6 +11,6 @@ export async function signedIn(app: INestApplication) {
   return { api, userId: response.body.user.id as string, email };
 }
 export async function clearTestThrottle(client: PrismaClient, emails: string[] = []) {
-  const keys = ['login', 'register'].flatMap((operation) => [throttleKey(operation, 'ip', '127.0.0.1'), ...emails.map((email) => throttleKey(operation, 'email', email))]);
+  const keys = ['login', 'register', 'reset'].flatMap((operation) => [throttleKey(operation, 'ip', '127.0.0.1'), ...emails.map((email) => throttleKey(operation, 'email', email))]);
   await client.authThrottle.deleteMany({ where: { keyHash: { in: keys } } });
 }
