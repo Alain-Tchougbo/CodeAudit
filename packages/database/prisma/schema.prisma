@@ -71,6 +71,8 @@ model Analysis {
   sourcesDeletedAt DateTime?      @db.Timestamptz(3)
   profileVersion   String?        @db.VarChar(120)
   report           Json?
+  captureContext   Boolean        @default(false)
+  codeContext      Json?
   statistics       Json?
   errorCode        String?        @db.VarChar(64)
   errorMessage     String?        @db.VarChar(500)

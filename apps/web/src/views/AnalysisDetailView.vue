@@ -186,6 +186,7 @@ const elapsed = computed(() => {
         v-if="data.report"
         :key="data.analysis.id"
         :issues="data.report.issues"
+        :analysis-id="data.analysis.id"
       />
     </template>
   </section>

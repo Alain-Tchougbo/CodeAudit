@@ -1,7 +1,8 @@
 import { BadRequestException, ConflictException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type Analysis } from '@codeaudit/database';
 import { AnalysisQueue, JobError, SourceStore, prepareSources } from '@codeaudit/analysis-jobs';
-import type { AnalysisSummary, ProjectSnapshot } from '@codeaudit/contracts';
+import type { AnalysisCodeContext, AnalysisSummary, ProjectSnapshot } from '@codeaudit/contracts';
+import { validateCodeContext } from './code-context.schema';
 import { PrismaService } from '../database/prisma.service';
 import type { HistoryQuery } from './history.dto';
 
@@ -35,7 +36,7 @@ export class AnalysesService {
   private activeImports = 0;
   constructor(private readonly database: PrismaService) {}
 
-  async create(projectId: string, archive: Buffer | undefined, ownerId: string): Promise<AnalysisSummary> {
+  async create(projectId: string, archive: Buffer | undefined, ownerId: string, options: { captureContext?: boolean } = {}): Promise<AnalysisSummary> {
     if (!await this.database.client.project.findUnique({ where: { id: projectId, ownerId }, select: { id: true } })) {
       throw new NotFoundException({ code: 'PROJECT_NOT_FOUND', message: 'Projet introuvable.' });
     }
@@ -47,7 +48,7 @@ export class AnalysesService {
     try {
       store = await SourceStore.open();
       sources = await prepareSources(store, archive);
-      const record = await new AnalysisQueue(this.database.client).enqueue(projectId, sources);
+      const record = await new AnalysisQueue(this.database.client).enqueue(projectId, sources, options);
       return summary(record);
     } catch (error) {
       if (sources && store) await store.remove(sources.key);
@@ -98,5 +99,22 @@ export class AnalysesService {
       throw new ConflictException({ code: 'ANALYSIS_NOT_SUCCEEDED', message: 'Les résultats ne sont disponibles que pour une analyse réussie.' });
     }
     return analysis.report;
+  }
+
+  async context(id: string, ownerId: string): Promise<AnalysisCodeContext> {
+    const analysis = await this.database.client.analysis.findUnique({ where: { id, project: { ownerId } }, select: { status: true, captureContext: true, codeContext: true } });
+    if (!analysis) throw new NotFoundException({ code: 'ANALYSIS_NOT_FOUND', message: 'Analyse introuvable.' });
+    if (analysis.status !== 'SUCCEEDED') throw new ConflictException({ code: 'CONTEXT_NOT_AVAILABLE', message: 'Les extraits sont consultables après une analyse réussie.' });
+    if (analysis.codeContext !== null && (!analysis.captureContext || !validateCodeContext(analysis.codeContext) || Buffer.byteLength(JSON.stringify(analysis.codeContext)) > 128 * 1024)) {
+      throw new ConflictException({ code: 'CODE_CONTEXT_INVALID', message: 'Les extraits enregistrés sont invalides.' });
+    }
+    return { requested: analysis.captureContext, context: analysis.codeContext };
+  }
+
+  async deleteContext(id: string, ownerId: string): Promise<void> {
+    const analysis = await this.database.client.analysis.findUnique({ where: { id, project: { ownerId } }, select: { status: true } });
+    if (!analysis) throw new NotFoundException({ code: 'ANALYSIS_NOT_FOUND', message: 'Analyse introuvable.' });
+    if (analysis.status === 'QUEUED' || analysis.status === 'RUNNING') throw new ConflictException({ code: 'ANALYSIS_NOT_FINISHED', message: 'Attendez la fin de l’analyse avant de supprimer les extraits.' });
+    await this.database.client.analysis.update({ where: { id, project: { ownerId } }, data: { codeContext: Prisma.DbNull, captureContext: false } });
   }
 }

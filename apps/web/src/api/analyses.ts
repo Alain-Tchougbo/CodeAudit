@@ -1,14 +1,17 @@
-import type { AnalysisComparison, AnalysisHistory, AnalysisResults, AnalysisSummary, Dashboard } from '@codeaudit/contracts';
+import type { AnalysisCodeContext, AnalysisComparison, AnalysisHistory, AnalysisResults, AnalysisSummary, Dashboard } from '@codeaudit/contracts';
 
 import { apiResponse } from './http';
 const response = (path: string, signal?: AbortSignal, options: RequestInit = {}) => apiResponse(path, { ...options, signal });
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> { return (await response(path, signal)).json() as Promise<T>; }
 export const analysesApi = {
-  create: async (projectId: string, file: File, signal?: AbortSignal): Promise<AnalysisSummary> => {
+  create: async (projectId: string, file: File, signal?: AbortSignal, options: { captureContext?: boolean } = {}): Promise<AnalysisSummary> => {
     const form = new FormData(); form.append('archive', file);
+    if (options.captureContext) form.append('captureContext', 'true');
     return (await response(`/projects/${encodeURIComponent(projectId)}/analyses`, signal, { method: 'POST', body: form })).json() as Promise<AnalysisSummary>;
   },
   export: async (id: string, signal?: AbortSignal) => (await response(`/analyses/${encodeURIComponent(id)}/report`, signal)).blob(),
+  context: (id: string, signal?: AbortSignal) => get<AnalysisCodeContext>(`/analyses/${encodeURIComponent(id)}/context`, signal),
+  deleteContext: async (id: string, signal?: AbortSignal) => { await response(`/analyses/${encodeURIComponent(id)}/context`, signal, { method: 'DELETE' }); },
   dashboard: (signal?: AbortSignal) => get<Dashboard>('/dashboard', signal),
   get: (id: string, signal?: AbortSignal) => get<AnalysisSummary>(`/analyses/${encodeURIComponent(id)}`, signal),
   results: (id: string, signal?: AbortSignal) => get<AnalysisResults>(`/analyses/${encodeURIComponent(id)}/results`, signal),

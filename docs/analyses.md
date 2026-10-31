@@ -1,5 +1,33 @@
 # Exécution des analyses
 
+## Aperçu facultatif du code
+
+POST /api/projects/:id/analyses accepte le champ multipart captureContext=true ou
+false en plus du ZIP. Par défaut false. Les autres champs sont refusés. Le worker
+enregistre les extraits avec le rapport avant le nettoyage des sources ; la migration
+20261031000200_code_context ajoute captureContext et codeContext dans Analysis.
+Les rapports existants restent sans extraits et leurs exports JSON ne changent pas.
+
+GET /api/analyses/:id/context retourne requested et context après une réussite.
+DELETE /api/analyses/:id/context supprime tous les extraits de cette analyse et
+retourne 204, sans modifier son rapport. Les deux routes contrôlent le propriétaire ;
+la suppression exige CSRF et est refusée pendant un travail actif. Un contexte
+corrompu est refusé par validation de schéma et de taille.
+
+Capture : au plus les 100 premiers diagnostics positionnés, rayon de trois lignes,
+128 Kio lus par fichier, 2 Mio lus au total, lignes de 500 caractères et enveloppe
+JSON de 128 Kio maximum. Les lignes communes sont fusionnées. Les chemins traversants,
+absolus et symboliques sont refusés. Aucune source n'est exécutée ; l'aperçu effectue
+seulement des lectures bornées. L'interface indique les extraits tronqués ou absents.
+Les délais et annulations du traitement restent applicables.
+
+Le consentement signale que les extraits peuvent contenir des informations sensibles.
+Ils suivent la conservation du rapport jusqu'à suppression explicite ou suppression
+du projet. Les fichiers sources temporaires restent supprimés après traitement.
+Le frontend charge les extraits à la demande, partage la requête entre les diagnostics
+affichés, échappe le texte et propose une coloration lexicale JS/TS simple (pas un
+parseur complet). Aucune requête ne relit un chemin source arbitraire après traitement.
+
 ## Comparaison des rapports enregistrés
 
 GET /api/analyses/:targetId/comparison?baselineId=UUID exige une session. Les deux

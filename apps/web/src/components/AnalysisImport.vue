@@ -9,10 +9,11 @@ const router = useRouter();
 const file = shallowRef<File | null>(null);
 const busy = ref(false);
 const error = ref('');
+const captureContext = ref(false);
 let signal: AbortSignal;
 watch(() => props.projectId, (_id, _old, onCleanup) => {
   const controller = new AbortController(); signal = controller.signal;
-  onCleanup(() => controller.abort()); file.value = null; busy.value = false; error.value = '';
+  onCleanup(() => controller.abort()); file.value = null; busy.value = false; error.value = ''; captureContext.value = false;
 }, { immediate: true });
 function select(event: Event) { file.value = (event.target as HTMLInputElement).files?.[0] ?? null; error.value = ''; }
 async function submit() {
@@ -23,7 +24,7 @@ async function submit() {
   if (!archive.size || archive.size > ANALYSIS_ARCHIVE_MAX_BYTES) { error.value = 'L’archive doit être non vide et ne pas dépasser 10 Mio.'; return; }
   const requestSignal = signal; busy.value = true; error.value = '';
   try {
-    const analysis = await analysesApi.create(props.projectId, archive, requestSignal);
+    const analysis = captureContext.value ? await analysesApi.create(props.projectId, archive, requestSignal, { captureContext: true }) : await analysesApi.create(props.projectId, archive, requestSignal);
     if (!requestSignal.aborted) await router.push(`/analyses/${analysis.id}`);
   } catch (cause) {
     if (!requestSignal.aborted) error.value = cause instanceof Error ? cause.message : 'Impossible de demander cette analyse.';
@@ -85,6 +86,16 @@ async function submit() {
             class="mt-3 break-all font-mono text-xs text-slate-600"
           >
             {{ file.name }} · {{ (file.size / 1024).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) }} Kio
+          </p><label class="mt-5 flex items-start gap-3 text-xs leading-6 text-slate-700"><input
+            v-model="captureContext"
+            type="checkbox"
+            class="mt-1.5 size-4 shrink-0 accent-[#176448]"
+            aria-describedby="context-consent-help"
+          ><span>Conserver un aperçu du code pour les diagnostics</span></label><p
+            id="context-consent-help"
+            class="mt-2 text-xs leading-5 text-slate-500"
+          >
+            Facultatif : des extraits limités seront conservés avec l’analyse et pourront être supprimés. Ils peuvent contenir des informations sensibles. Les sources complètes restent temporaires.
           </p><button
             type="submit"
             class="button-primary mt-5 w-full sm:w-auto"
