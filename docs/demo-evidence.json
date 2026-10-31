@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "observedOn": "2026-10-31",
+  "codeauditCommit": "7c09f6ca54d4eac3c1d23f590753bc18a0591160",
+  "source": {
+    "repository": "expressjs/express",
+    "version": "5.1.0",
+    "commit": "cd7d4397c398a3f3ecadeaf9ef6ac1377bd414c4",
+    "archiveSha256": "f1d730c4a89ca142cef7da22229b99cec1aefabda7d71115cd4f935eda719628",
+    "archiveBytes": 250407,
+    "archiveEntries": 295
+  },
+  "profile": {
+    "version": "codeaudit-js-ts-v1",
+    "engines": {
+      "eslint": "10.13.0",
+      "typescript": "5.9.3",
+      "typescriptEslint": "8.72.1"
+    }
+  },
+  "runs": [
+    {
+      "import": "ZIP",
+      "status": "SUCCEEDED",
+      "exportSchemaVersion": 1,
+      "statistics": {
+        "bytesRead": 538295,
+        "durationMs": 5765.461,
+        "errorCount": 1728,
+        "issueCount": 2022,
+        "warningCount": 294,
+        "ignoredFileCount": 83,
+        "syntaxErrorCount": 0,
+        "affectedFileCount": 122,
+        "analyzedFileCount": 142,
+        "ignoredEntryCount": 83,
+        "supportedFileCount": 142,
+        "discoveredFileCount": 225,
+        "ignoredDirectoryCount": 0
+      }
+    },
+    {
+      "import": "GITHUB",
+      "status": "SUCCEEDED",
+      "exportSchemaVersion": 2,
+      "statistics": {
+        "bytesRead": 538295,
+        "durationMs": 4457.627,
+        "errorCount": 1728,
+        "issueCount": 2022,
+        "warningCount": 294,
+        "ignoredFileCount": 83,
+        "syntaxErrorCount": 0,
+        "affectedFileCount": 122,
+        "analyzedFileCount": 142,
+        "ignoredEntryCount": 83,
+        "supportedFileCount": 142,
+        "discoveredFileCount": 225,
+        "ignoredDirectoryCount": 0
+      }
+    }
+  ],
+  "diagnosticsByRule": {
+    "no-console": 42,
+    "no-unused-vars": 252,
+    "no-undef": 1725,
+    "eqeqeq": 3
+  },
+  "checks": {
+    "realBrowser": true,
+    "realPostgreSQL": true,
+    "realWorker": true,
+    "realGitHubDownload": true,
+    "zipDownloadEqualsStoredReport": true,
+    "gitExportEqualsStoredReport": true,
+    "mobileWidth390WithoutHorizontalOverflow": true
+  },
+  "limitations": [
+    "Fixed globals flag test-runner identifiers; diagnostic counts are not confirmed bugs or vulnerabilities.",
+    "Dates and durations vary by environment.",
+    "This local walkthrough is not a public deployment or independent security audit."
+  ]
+}
