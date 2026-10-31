@@ -76,6 +76,7 @@ jamais été enregistrés. Cette provenance apparaît aussi à l'écran.
 | Analyse absente | 404 | ANALYSIS_NOT_FOUND |
 | QUEUED ou RUNNING | 409 | ANALYSIS_NOT_FINISHED |
 | FAILED, aucun rapport du moteur disponible | 409 | ANALYSIS_FAILED |
+| CANCELLED, arrêt demandé sans rapport publié | 409 | ANALYSIS_CANCELLED |
 | Rapport ou métadonnées incomplets | 409 | REPORT_UNAVAILABLE |
 | Schéma historique non pris en charge ou document mal formé | 409 | REPORT_SCHEMA_INVALID |
 | Métadonnées et rapport divergents | 409 | REPORT_INCONSISTENT |

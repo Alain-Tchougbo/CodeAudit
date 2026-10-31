@@ -7,6 +7,7 @@ const states = {
   RUNNING: { label: 'En cours', style: 'badge-running', icon: 'refresh' },
   SUCCEEDED: { label: 'Terminée', style: 'badge-success', icon: 'check' },
   FAILED: { label: 'Échec technique', style: 'badge-error', icon: 'warning' },
+  CANCELLED: { label: 'Annulée', style: 'badge-queued', icon: 'cancel' },
 } as const;
 </script>
 <template>

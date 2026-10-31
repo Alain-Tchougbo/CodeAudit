@@ -1,6 +1,7 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ name: 'code' | 'dashboard' | 'folder' | 'user' | 'logout' | 'arrow' | 'back' | 'plus' | 'search' | 'refresh' | 'upload' | 'download' | 'check' | 'warning' | 'clock' | 'file' | 'filter' | 'shield'; size?: number }>(), { size: 20 });
+withDefaults(defineProps<{ name: 'code' | 'dashboard' | 'folder' | 'user' | 'logout' | 'arrow' | 'back' | 'plus' | 'search' | 'refresh' | 'upload' | 'download' | 'check' | 'warning' | 'clock' | 'file' | 'filter' | 'shield' | 'cancel'; size?: number }>(), { size: 20 });
 const paths = {
+  cancel: 'm9 9 6 6m0-6-6 6M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
   code: 'm8 7-5 5 5 5m8-10 5 5-5 5m-3-14-2 18',
   dashboard: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
   folder: 'M3 7V5a1 1 0 0 1 1-1h5l3 3h8a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7z',
