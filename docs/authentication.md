@@ -133,7 +133,9 @@ zéro projet lors de l'examen initial. Pour une autre base existante, un adminis
 doit sélectionner explicitement les projets et leur propriétaire et effectuer une
 attribution contrôlée via ses accès PostgreSQL. Aucun endpoint public de revendication
 ou transfert n'a été ajouté. La suppression d'un User possédant encore des projets
-est refusée par la clé étrangère ; supprimer le compte n'est pas exposé par l'API.
+est refusée par la clé étrangère hors du parcours contrôlé de suppression. Le module
+de [comptes et sécurité](account-security.md) expose désormais ce parcours après
+réauthentification, avec préservation des projets partagés et du dernier administrateur.
 
 Les snapshots historiques du projet restent inchangés. Les nouveaux snapshots
 n'incluent pas ownerId, afin de conserver le schéma d'export et de limiter les
@@ -165,8 +167,9 @@ expiration réelle en base et refus de lecture/modification/suppression étrang�
 ## Limites restantes
 
 Les attributs Secure/__Host sont vérifiés en test API ; un déploiement HTTPS réel
-n'a pas été testé de bout en bout. Ni pentest, audit cryptographique indépendant,
-MFA ou vérification d'adresse n'est fourni. La configuration de proxy, les quotas
+n'a pas été testé de bout en bout. Aucun pentest ou audit cryptographique indépendant
+n'est fourni. MFA et vérification d'adresse sont décrites dans le module de
+[comptes et sécurité](account-security.md). La configuration de proxy, les quotas
 publics, la supervision et les protections système du worker restent à revoir
 avant production. Un logout ne peut pas annuler une requête déjà admise ni un
 travail d'analyse déjà mis en file. Les tests exercés ne constituent pas une garantie

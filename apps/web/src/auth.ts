@@ -15,7 +15,7 @@ export async function restoreSession(): Promise<void> {
   })().finally(() => { pending = undefined; });
   return pending;
 }
-export async function authenticate(mode: 'login' | 'register', input: { name?: string; email: string; password: string }) {
+export async function authenticate(mode: 'login' | 'register', input: { name?: string; email: string; password: string; code?: string }) {
   const profile = await apiJson<AuthProfile>(`/auth/${mode}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
   acceptProfile(profile);
 }

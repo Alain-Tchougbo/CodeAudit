@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { ArgumentsHost, Catch, HttpException, type ExceptionFilter, Logger } from '@nestjs/common';
 import { Prisma } from '@codeaudit/database';
 import type { ApiError } from '@codeaudit/contracts';
+import { isWriteConflict } from './database/write-conflict';
 
 @Catch()
 export class HttpErrorFilter implements ExceptionFilter {
@@ -25,6 +26,8 @@ export class HttpErrorFilter implements ExceptionFilter {
         } else if (typeof response.message === 'string') message = response.message;
         if (response.code) code = response.code;
       }
+    } else if (isWriteConflict(error)) {
+      statusCode = 409; code = 'CONCURRENT_UPDATE'; message = 'Une modification simultanée a eu lieu. Actualisez puis réessayez.';
     } else if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2025') {
         statusCode = 404; code = 'PROJECT_NOT_FOUND'; message = 'Projet introuvable.';

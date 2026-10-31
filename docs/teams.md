@@ -81,11 +81,14 @@ que Mailpit sur TEST_SMTP_PORT et TEST_MAILPIT_API_URL. Les tests utilisent uniq
 des destinataires synthétiques `@example.test`. `pnpm test:e2e` comprend le parcours
 d'invitation, inscription, partage, lecture, changement de rôle puis retrait réel.
 
-Pas de SSO, MFA, validation générale des adresses à l'inscription, changement
-d'adresse, audit administratif, facturation ou quotas par organisation dans ce lot.
+Le lot équipes ne fournit pas de SSO d'entreprise, audit administratif, facturation
+ou quotas par organisation. MFA, vérification et changement d'adresse sont
+disponibles dans le module de [comptes et sécurité](account-security.md).
 Le lien d'invitation établit l'accès à la boîte destinataire pour rejoindre l'équipe.
 Le retour d'un projet partagé à un projet personnel, le transfert entre équipes
-et la suppression de compte ne sont pas proposés. Les migrations ne suppriment pas
+ne sont pas proposés. La [suppression du compte](account-security.md) est désormais
+disponible avec réauthentification et protection du dernier administrateur ; les
+projets partagés restent à l'équipe. Les migrations ne suppriment pas
 les projets ou rapports existants. Le lancement documenté reste local ; HTTPS,
 transport de messagerie réel et revue de sécurité indépendante restent à préparer
 avant une exposition publique.

@@ -1,6 +1,7 @@
 import { Transform } from 'class-transformer';
-import { IsEmail, IsString, Length, Matches, MaxLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
 export class LoginDto {
+  @IsOptional() @Transform(({ value }: { value: unknown }) => typeof value === 'string' ? value.trim().toLowerCase() : value) @Matches(/^(?:\d{6}|[a-f0-9]{8}(?:-[a-f0-9]{8}){3})$/) code?: string;
   @Transform(({ value }: { value: unknown }) => typeof value === 'string' ? value.trim().toLowerCase() : value)
   @IsEmail({}, { message: 'Adresse e-mail invalide.' })
   @MaxLength(254)

@@ -40,6 +40,11 @@ Un répertoire de travail distinct est réservé à chaque analyse.
 ## Modèle et états prévus
 
 User : profil, adresse unique normalisée, hash scrypt ; sessions persistées et quotas.
+Le module [comptes et sécurité](account-security.md) ajoute vérification d'adresse,
+version d'authentification, TOTP chiffré, codes de secours hachés, identités et flux
+OAuth, événements et export personnel. Les comptes existants restent non vérifiés
+jusqu'à preuve e-mail ; aucune identité externe n'est associée par correspondance
+d'adresse. Les rapports partagés restent aux équipes après suppression d'un compte.
 Project : identifiant, nom, description, dates, propriétaire et équipe facultative ; anciens projets
 non attribués invisibles. Voir docs/authentication.md pour les contrôles et la migration.
 Team, TeamMember et TeamInvitation : rôles ADMIN/MEMBER/READER, adhésion courante

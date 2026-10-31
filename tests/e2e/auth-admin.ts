@@ -7,7 +7,7 @@ export async function cleanupAccounts(ids: string[], emails: string[]) {
     await database.project.deleteMany({ where: { ownerId: { in: ids } } });
     await database.team.deleteMany({ where: { createdById: { in: ids }, projects: { none: {} } } });
     await database.user.deleteMany({ where: { id: { in: ids } } });
-    const hashes = ['login', 'register'].flatMap((operation) => [`${operation}:ip:127.0.0.1`, ...emails.map((email) => `${operation}:email:${email}`)]).map((key) => createHash('sha256').update(key).digest('hex'));
+    const hashes = ['login', 'register', 'reset', 'invite', 'verify', 'reauth', 'oauth'].flatMap((operation) => [`${operation}:ip:127.0.0.1`, ...[...emails, ...ids].map((value) => `${operation}:email:${value}`)]).map((key) => createHash('sha256').update(key).digest('hex'));
     await database.authThrottle.deleteMany({ where: { keyHash: { in: hashes } } });
   } finally { await database.$disconnect(); }
 }

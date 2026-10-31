@@ -11,7 +11,7 @@ export async function testMessages(email: string): Promise<{ ID: string }[]> {
   if (!response.ok) throw new Error('Mailpit search unavailable');
   return ((await response.json()) as { messages: { ID: string }[] }).messages;
 }
-export async function mailLink(email: string, path: 'reset-password' | 'team-invitation'): Promise<string> {
+export async function mailLink(email: string, path: 'reset-password' | 'team-invitation' | 'verify-email'): Promise<string> {
   const deadline = Date.now() + 8000;
   do {
     const messages = await testMessages(email);

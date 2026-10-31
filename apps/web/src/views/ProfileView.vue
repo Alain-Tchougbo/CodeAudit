@@ -3,6 +3,10 @@ import { computed } from 'vue';
 import { authState } from '../auth-state';
 import AppIcon from '../components/AppIcon.vue';
 import ActiveSessions from '../components/ActiveSessions.vue';
+import ProfileEditor from '../components/ProfileEditor.vue';
+import AccountSecurity from '../components/AccountSecurity.vue';
+import { useRoute } from 'vue-router';
+const route = useRoute();
 import { date } from '../format';
 const initials = computed(() => authState.user.value?.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() ?? '');
 </script>
@@ -69,6 +73,22 @@ const initials = computed(() => authState.user.value?.name.trim().split(/\s+/).s
         </p>
       </aside>
     </div>
+    <p
+      v-if="route.query.oauth === 'linked'"
+      role="status"
+      class="notice notice-success mt-6"
+    >
+      Compte externe associé. Vous pouvez l’utiliser lors de votre prochaine connexion.
+    </p>
+    <p
+      v-if="route.query.oauthError"
+      role="alert"
+      class="notice notice-error mt-6"
+    >
+      L’association externe n’a pas abouti. Vérifiez la configuration et recommencez depuis votre profil.
+    </p>
+    <ProfileEditor />
+    <AccountSecurity />
     <ActiveSessions />
   </section>
 </template>

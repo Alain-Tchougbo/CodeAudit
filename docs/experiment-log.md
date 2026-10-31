@@ -666,3 +666,137 @@ minimale corrigés, capture réexaminée. Le test Playwright d'équipes vérifie
 les positions du titre et du logo et l'absence de débordement à 320, 390 et 1440 px.
 Lint, typage des outils puis parcours complet des équipes relancés : succès,
 1/1 test Chromium en 24,4 secondes, dont 16,4 secondes pour le parcours.
+
+## 31 octobre 2026 — compléter le module Comptes et sécurité
+
+La revue demandée par l'utilisateur a confirmé que les huit lots précédents ne
+couvraient pas toute la catégorie « Comptes et sécurité ». Seules récupération,
+sessions et déconnexion globale étaient déjà livrées. Branche
+feat/account-security-completion créée depuis origin/staging 2ae2156 pour compléter
+vérification d'adresse, modifications du profil/mot de passe, 2FA, OAuth,
+suppression, export personnel et événements.
+
+Migration 20261031000900_account_security appliquée aux bases locale et dédiée
+aux tests, génération Prisma réussie, comparaison locale du schéma sans différence.
+Les comptes existants restent non vérifiés ; authVersion=0 conserve leurs sessions
+existantes. Les créateurs d'équipe deviennent nullable pour préserver l'équipe
+après suppression de leur compte. Aucun rapport historique réécrit.
+
+TOTP SHA-1 à six chiffres selon RFC 6238, secret chiffré AES-256-GCM lié au compte,
+confirmation bornée et dix codes de secours de 128 bits affichés une seule fois,
+hachés en base et consommés atomiquement. Une adresse vérifiée est requise avant
+la configuration. Même après récupération du mot de passe, la 2FA reste exigée.
+Les actions sensibles exigent une réauthentification et un code si actif.
+Les sessions portent une version vérifiée à chaque requête, pour refuser les
+connexions concurrentes fondées sur un ancien état des accès.
+
+Vérification et changement d'adresse par vrai SMTP : token aléatoire haché,
+expiration 30 minutes, consommation unique, adresse inchangée jusqu'à confirmation,
+liens invalidés après rotation des accès. Changement de mot de passe protégé,
+révocation des sessions et clés ; récupération révoquant également les associations
+OAuth. Journal personnel paginé avec rétention de 90 jours, sans secrets ni IP.
+Export JSON personnel v1 en snapshot RepeatableRead, sélection explicite des
+champs et limites avec erreur plutôt que troncature. Suppression Serializable
+préservant projets partagés et dernier administrateur ; refus si analyse personnelle
+active. Tests de suppressions concurrentes avec une vraie base.
+
+OAuth GitHub.com et GitLab.com : association explicite depuis un compte local
+vérifié, jamais sur simple correspondance d'e-mail ; Authorization Code/PKCE S256,
+state et cookie navigateur, vérificateur chiffré, expiration/consommation unique.
+Endpoints HTTPS fixes, lectures bornées et sans redirection. La 2FA reste requise
+après callback avant émission de session ; un challenge n'autorise aucun projet.
+Un détour OAuth ne remplace pas une session ouverte entre-temps pour un autre compte.
+Les fournisseurs sont explicitement indisponibles dans l'interface sans leurs
+identifiants serveur. Aucun vrai identifiant d'application n'a été fourni : les
+tests d'échange fournisseur sont contrôlés, aucune connexion externe réelle
+n'est revendiquée. Documentation des callbacks et variables dans docs/account-security.md.
+
+Interfaces Vue dans Mon profil, composants séparés et formulaires sensibles
+réutilisables, confirmation e-mail publique, étape 2FA de connexion, compteurs et
+événements uniquement issus de l'API. Les codes de secours restent visibles après
+activation sans remontage du composant, puis disparaissent après masquage/navigation.
+Aucun jeton en localStorage/sessionStorage, aucune dépendance externe ajoutée.
+Le script pnpm auth:init-key a créé une clé dans le .env ignoré, sans l'afficher ;
+un deuxième passage et comparaison d'empreinte confirment que le fichier est conservé.
+
+Premiers résultats : installation pnpm --frozen-lockfile réussie, audit de production
+sans vulnérabilité connue, Compose valide et pnpm check réussi avec 284 tests
+(28 analyzer, 56 jobs, 71 API, 129 Vue), lint, typage, builds et validation Prisma.
+26 premières intégrations puis 33/33 cas élargis PostgreSQL/SMTP réussis ; cas
+supplémentaire de session ouverte pendant OAuth ajouté ensuite pour la régression.
+Trois nouveaux parcours Chromium ciblés réussis en 35,3 secondes : profil,
+vérification, mot de passe, export et suppression ; activation/connexion/désactivation
+2FA et codes de secours ; changement d'adresse confirmé et reconnexion du même compte.
+
+Difficultés corrigées : types stricts des en-têtes de redirection dans les tests,
+nom d'une variable de rapport qui masquait document dans un callback navigateur,
+et accès Prisma OAuth au nom exact oAuthFlow/oAuthIdentity. L'export a d'abord
+émis un avertissement pg sur des requêtes parallèles sur la même connexion :
+requêtes rendues séquentielles dans la transaction. Le premier passage Chromium
+complet a donné 18 succès et 3 échecs : un sélecteur de l'ancien écran devenu
+ambigu et des quotas de tests restés actifs entre scénarios. Sélecteur précisé
+sur la définition du profil et nettoyage de la seule base _test étendu aux nouveaux
+quotas ; limites de l'application conservées. La régression finale est relancée.
+
+Complément au bilan du lot 8 : après sa fusion, Vite dev Windows s'est arrêté avec
+le code natif -1073740791, entraînant l'arrêt du lanceur parallèle. Le build web
+a réussi à nouveau ; API et worker compilés et Vite preview ont été relancés
+séparément puis vérifiés en HTTP et Chromium. Ce fait est également consigné dans
+la PR 14 ; la cause native n'est pas établie. Aucune protection système modifiée.
+
+Régression suivante : 21/21 parcours Chromium réussis en 3 minutes après précision
+du sélecteur h1 « Mon profil ». Les nouveaux quotas sont nettoyés avant/après les
+scénarios uniquement dans la base dédiée _test. Une configuration 2FA non confirmée
+est désormais supprimée lors de rotation des accès/déconnexion globale, avec un
+test empêchant sa confirmation ultérieure. Un contrôle PostgreSQL du volume JSON
+des rapports et du nombre d'événements précède le chargement de l'export en mémoire.
+
+La suite élargie a ensuite montré 34 succès et un échec réel : deux suppressions
+concurrentes gardaient un administrateur mais une requête renvoyait parfois 500.
+Reproduction déterministe par verrous sur les deux lignes User, attente de deux
+DELETE dans pg_stat_activity, puis libération : la forme brute DriverAdapterError
+était transmise au commit. Inspection du code installé adapter-pg 7.10.1 : SQLSTATE
+40001/40P01 est représenté par cause.kind=TransactionWriteConflict et pas toujours
+par Prisma P2034. Le filtre d'erreurs reconnaît désormais les deux formes et répond
+409 sans détails internes. Aucun élargissement du catch à toutes les erreurs SQL.
+Test réel avec barrière PostgreSQL réussi après correction ; instrumentation de
+diagnostic retirée, tests de discrimination positifs/négatifs ajoutés. Tests API
+relancés : 73/73, typage API réussi. Régression PostgreSQL complète reprise dans
+des processus séparés, avec désormais 35 tests ciblés de comptes et sécurité.
+
+Le passage suivant a révélé une limite globale involontaire pour le fournisseur
+OAuth public : la chaîne GITHUB servait d'identifiant de quota pour tous les
+clients et survivait aux scénarios. Le démarrage public utilise désormais seulement
+le quota IP ; l'association authentifiée conserve en plus le quota par utilisateur,
+et le challenge MFA son quota par flux. Un test préremplit l'ancien quota global
+et confirme qu'il ne bloque pas les autres clients. Limites IP conservées.
+Les 35/35 intégrations ciblées ont ensuite réussi en 93 secondes, sans l'avertissement
+pg de l'ancien export parallèle et avec le test de conflit déterministe.
+
+### Bilan vérifié
+
+La CI Linux 41201281369 sur d31c333 est verte : installation figée, audit de
+production, pnpm check, Compose, migrations, schéma, 192/192 tests PostgreSQL
+regroupés dans 12 suites et 21/21 parcours Chromium. Le total unitaires/frontend
+est 286 (28 analyzer, 56 jobs, 73 API, 129 Vue), après les deux tests de conflits
+ajoutés au bilan initial de 284. La reprise locale complète des 21 parcours est
+également verte ; les 35 cas ciblés de comptes et sécurité et le conflit réel
+PostgreSQL passent localement. Les suites préexistantes sont aussi reprises dans
+des processus séparés pour compléter la non-régression sur ce poste Windows.
+
+Builds API et frontend locaux relancés, comparaison Prisma sans différence et
+absence d'analyse locale active confirmées avant redémarrage des seuls services
+dont les PID et lignes de commande appartiennent à CodeAudit. Lancement masqué
+avec API/worker compilés et Vite preview : HTTP 200 sur frontend 5173, API 3000/health,
+proxy /api/health et boîte Mailpit 8027. Chromium sur ce serveur local vérifie
+inscription, protection de /teams, invitations incomplètes, nouvelle page de
+confirmation d'adresse et métadonnées OAuth, sans créer de compte de démonstration.
+La clé serveur est présente dans le .env ignoré, pas dans Git ni dans les réponses.
+
+La dernière mise à jour de documentation doit obtenir ses propres contrôles avant
+fusion de la PR 15 vers staging. Aucune livraison vers main n'est réalisée.
+Les connexions GitHub/GitLab sont implémentées et testées avec transport contrôlé,
+mais restent indisponibles en environnement local sans applications OAuth et
+identifiants réels. Configuration et vérification interactive fournisseur restent
+à réaliser par l'opérateur. Aucun pentest, audit cryptographique indépendant,
+déploiement public HTTPS ou livraison Internet des e-mails n'est revendiqué.

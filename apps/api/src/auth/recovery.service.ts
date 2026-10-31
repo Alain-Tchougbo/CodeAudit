@@ -7,6 +7,8 @@ import { AuthService, digest, sessionToken } from './auth.service';
 import { hashPassword } from './password';
 import { MailService } from './mail.service';
 import type { AuthRequest, CookieResponse } from './auth.types';
+import { SecurityAuditService } from './security-audit.service';
+import { invalidateCredentials } from './mfa.service';
 
 export class ForgotPasswordDto {
   @Transform(({ value }: { value: unknown }) => typeof value === 'string' ? value.trim().toLowerCase() : value)
@@ -20,13 +22,14 @@ const invalid = () => new BadRequestException({ code: 'RESET_TOKEN_INVALID', mes
 @Injectable()
 export class RecoveryService {
   private readonly logger = new Logger(RecoveryService.name);
-  constructor(private readonly database: PrismaService, private readonly auth: AuthService, private readonly mail: MailService) {}
+  constructor(private readonly database: PrismaService, private readonly auth: AuthService, private readonly mail: MailService, private readonly audit: SecurityAuditService) {}
   async forgot(input: ForgotPasswordDto, request: AuthRequest) {
     this.auth.checkOrigin(request); await this.auth.limit(request, 'reset', input.email); this.mail.assertConfigured();
     const user = await this.database.client.user.findUnique({ where: { email: input.email }, select: { id: true, email: true } });
     if (user) {
       const token = randomBytes(32).toString('hex'); const now = new Date();
       await this.database.client.passwordResetToken.upsert({ where: { userId: user.id }, create: { userId: user.id, tokenHash: digest(token), expiresAt: new Date(now.getTime() + 15 * 60 * 1000) }, update: { tokenHash: digest(token), createdAt: now, expiresAt: new Date(now.getTime() + 15 * 60 * 1000) } });
+      await this.audit.record(user.id, 'PASSWORD_RESET_REQUESTED');
       try { await this.mail.reset(user.email, token); }
       catch { this.logger.warn('Envoi de récupération non abouti ; vérifiez le transport SMTP.'); }
     }
@@ -40,8 +43,9 @@ export class RecoveryService {
     await this.database.client.$transaction(async transaction => {
       const consumed = await transaction.passwordResetToken.deleteMany({ where: { id: record.id, tokenHash: record.tokenHash, expiresAt: { gt: new Date() } } });
       if (!consumed.count) throw invalid();
-      await transaction.user.update({ where: { id: record.userId }, data: { passwordHash } });
-      await transaction.apiKey.deleteMany({ where: { userId: record.userId } });
+      await transaction.user.update({ where: { id: record.userId }, data: { passwordHash, authVersion: { increment: 1 } } });
+      await invalidateCredentials(transaction, record.userId); await this.audit.record(record.userId, 'PASSWORD_RESET', {}, transaction);
+      await transaction.oAuthIdentity.deleteMany({ where: { userId: record.userId } });
       await transaction.session.deleteMany({ where: { OR: [{ userId: record.userId }, ...(cookie ? [{ tokenHash: digest(cookie) }] : [])] } });
     });
     this.auth.clearCookie(response);

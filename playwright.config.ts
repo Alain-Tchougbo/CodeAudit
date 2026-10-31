@@ -1,8 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 import { resolve } from 'node:path';
+import { randomBytes } from 'node:crypto';
 
 // Test workers must never reap source directories belonging to the local app.
 const storageRoot = resolve('.tmp/playwright-imports');
+const encryptionKey = randomBytes(32).toString('base64');
 process.env.CODEAUDIT_STORAGE_ROOT = storageRoot;
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -26,7 +28,7 @@ export default defineConfig({
     {
       command: 'pnpm --filter @codeaudit/api start',
       url: `${apiUrl}/health`,
-      env: { DATABASE_URL: databaseUrl, PORT: process.env.E2E_API_PORT ?? '3100', CODEAUDIT_STORAGE_ROOT: storageRoot, AUTH_APP_ORIGIN: webUrl, SMTP_HOST: '127.0.0.1', SMTP_PORT: process.env.TEST_SMTP_PORT ?? '1026' },
+      env: { DATABASE_URL: databaseUrl, PORT: process.env.E2E_API_PORT ?? '3100', CODEAUDIT_STORAGE_ROOT: storageRoot, AUTH_APP_ORIGIN: webUrl, SMTP_HOST: '127.0.0.1', SMTP_PORT: process.env.TEST_SMTP_PORT ?? '1026', SECURITY_ENCRYPTION_KEY: encryptionKey },
       reuseExistingServer: false,
     },
     {

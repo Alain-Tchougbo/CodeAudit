@@ -31,6 +31,14 @@ model Project {
 }
 
 model User {
+  authVersion Int @default(0)
+  emailVerifiedAt DateTime? @db.Timestamptz(3)
+  verification EmailVerification?
+  mfa MfaCredential?
+  recoveryCodes MfaRecoveryCode[]
+  identities OAuthIdentity[]
+  oauthFlows OAuthFlow[]
+  securityEvents SecurityEvent[]
   createdTeams Team[]
   memberships TeamMember[]
   sentTeamInvitations TeamInvitation[]
@@ -46,6 +54,7 @@ model User {
 }
 
 model Session {
+  authVersion Int @default(0)
   id         String   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tokenHash  String   @id @db.Char(64)
   userId     String   @db.Uuid
@@ -71,8 +80,8 @@ model Team {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name String @db.VarChar(120)
   createdAt DateTime @default(now()) @db.Timestamptz(3)
-  createdById String @db.Uuid
-  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String? @db.Uuid
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
   members TeamMember[]
   invitations TeamInvitation[]
   projects Project[]
@@ -108,6 +117,71 @@ enum TeamRole {
   ADMIN
   MEMBER
   READER
+}
+
+model EmailVerification {
+  userId String @id @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email String @db.VarChar(254)
+  changeEmail Boolean @default(false)
+  authVersion Int
+  tokenHash String @unique @db.Char(64)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  @@index([expiresAt])
+}
+
+model MfaCredential {
+  userId String @id @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secretEncrypted String @db.VarChar(512)
+  enabledAt DateTime? @db.Timestamptz(3)
+  pendingExpiresAt DateTime? @db.Timestamptz(3)
+  lastUsedStep BigInt @default(-1)
+}
+
+model MfaRecoveryCode {
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash String @db.Char(64)
+  @@id([userId, codeHash])
+}
+
+model OAuthIdentity {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider String @db.VarChar(10)
+  subject String @db.VarChar(120)
+  login String @db.VarChar(255)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@unique([provider, subject])
+  @@unique([userId, provider])
+}
+
+model OAuthFlow {
+  tokenHash String @id @db.Char(64)
+  browserHash String @db.Char(64)
+  provider String @db.VarChar(10)
+  purpose String @db.VarChar(10)
+  verifierEncrypted String? @db.VarChar(512)
+  userId String? @db.Uuid
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionHash String? @db.Char(64)
+  authVersion Int?
+  expiresAt DateTime @db.Timestamptz(3)
+  @@index([expiresAt])
+}
+
+model SecurityEvent {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type String @db.VarChar(64)
+  provider String? @db.VarChar(10)
+  sessionId String? @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([userId, createdAt, id])
 }
 
 model ApiKey {
