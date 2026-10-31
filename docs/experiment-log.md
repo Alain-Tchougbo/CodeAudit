@@ -428,3 +428,26 @@ sélecteur ambigu entre chargement et confirmation ; même échec en CI, sans fu
 Sélecteur précisé par son texte, puis suite Chromium complète : 13/13 réussis
 (1,4 minute), dont récupération via vrai SMTP, ancien cookie refusé, révocation
 d'un autre appareil puis de toutes les sessions. Traces .tmp/recovery-*.log.
+
+## 31 octobre 2026 — profils de règles versionnés, lot 4
+
+Branche feat/rule-profiles depuis origin/staging pendant la CI du lot 3, puis
+intégration de staging190a640 après fusion de la PR 9 avec contrôles verts.
+Conflit package.json résolu en conservant analyzer workspace et Nodemailer ;
+installation avec lockfile figé réussie, sans nouveau package externe pour ce lot.
+
+Registre immuable de deux profils : Essentiel préserve exactement les règles v1 ;
+Strict renforce console, variables inutilisées, any explicite et avertit sur la
+complexité/profondeur. Moteur toujours indépendant, aucun chargement de config du
+projet, de plugin externe, ni correction. Choix projet via API protégée et Vue ;
+version figée dans la transaction d'enqueue et transmise au thread. Publication
+conditionnée au profil demandé, aucune substitution silencieuse. Migration
+20261031000400_rule_profiles appliquée aux bases locale et dédiée aux tests.
+
+pnpm check réussi : 205 tests (28 moteur, 52 jobs, 27 API, 98 frontend), lint,
+types, builds, Prisma. Un avertissement de mise en forme Vue avait interrompu la
+première passe ; corrigé avant la passe réussie. Cinq nouveaux tests ciblés
+PostgreSQL réels réussis en 22 secondes : propriété/CSRF/validation, snapshot avant
+exécution et exports inchangés, comparaison incompatible, profil inconnu refusé,
+contrainte SQL et refus de publication incompatible. Suites complètes intégration
+et Chromium lancées ; résultats définitifs à inscrire après exécution.

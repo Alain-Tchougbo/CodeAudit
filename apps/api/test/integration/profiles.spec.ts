@@ -6,7 +6,7 @@ import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import type { PrismaClient } from '@codeaudit/database';
 import { AnalysisQueue, SourceStore, processNext } from '@codeaudit/analysis-jobs';
-import { ANALYSIS_PROFILE_VERSION, STRICT_PROFILE_VERSION } from '@codeaudit/analyzer';
+import { ANALYSIS_PROFILE_VERSION, STRICT_PROFILE_VERSION, analyzeProject } from '@codeaudit/analyzer';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/configure-app';
 import { PrismaService } from '../../src/database/prisma.service';
@@ -60,5 +60,18 @@ describe('Profils de règles — PostgreSQL et moteur réels', () => {
     await client.analysis.update({ where: { id: analysis.id }, data: { profileVersion: 'unavailable-v999' } });
     await processNext(new AnalysisQueue(client), await SourceStore.open(), 'profile-worker');
     const stored = await client.analysis.findUniqueOrThrow({ where: { id: analysis.id } }); expect(stored.status).toBe('FAILED'); expect(stored.report).toBeNull(); expect(stored.errorCode).toBe('INVALID_OPTIONS');
+  });
+  it('refuse en base une version non publiée sur un projet', async () => {
+    await expect(client.project.update({ where: { id: projectId }, data: { analysisProfileVersion: 'unpublished-v1' } })).rejects.toThrow();
+    expect((await client.project.findUniqueOrThrow({ where: { id: projectId } })).analysisProfileVersion).toBe(ANALYSIS_PROFILE_VERSION);
+  });
+  it('refuse de publier un rapport dont le profil diffère de la demande réservée', async () => {
+    await owner.api.put(path()).send({ version: STRICT_PROFILE_VERSION }).expect(200);
+    const analysis = (await owner.api.post(`/api/projects/${projectId}/analyses`).attach('archive', zip([{ name: 'index.js', data: 'export const answer = 42;' }]), 'source.zip').expect(202)).body;
+    const queue = new AnalysisQueue(client); const claim = await queue.claim('mismatched-profile'); expect(claim?.id).toBe(analysis.id);
+    const report = await analyzeProject(resolve(__dirname, '../../../../packages/analyzer/test/fixtures/clean'));
+    expect(await queue.succeed(claim!, report)).toBe(false);
+    expect((await client.analysis.findUniqueOrThrow({ where: { id: analysis.id } })).report).toBeNull();
+    await queue.fail(claim!, 'PROFILE_MISMATCH', 'Test controlled mismatch.');
   });
 });

@@ -132,7 +132,10 @@ async function remove(): Promise<void> {
       >
         {{ deleteError }}
       </p>
-      <ProjectRuleProfile :key="`profile-${project.id}`" :project-id="project.id" />
+      <ProjectRuleProfile
+        :key="`profile-${project.id}`"
+        :project-id="project.id"
+      />
       <AnalysisImport
         :key="project.id"
         :project-id="project.id"
