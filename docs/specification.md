@@ -6,10 +6,10 @@ Le formulaire de lancement ZIP est disponible dans la fiche projet.
 
 ## Objectif et périmètre
 
-Application locale mono-utilisateur d'audit statique JavaScript et TypeScript.
+Application d'audit statique JavaScript et TypeScript avec comptes et projets privés.
 Le MVP couvre les projets, l'import ZIP, les analyses asynchrones, les résultats
 détaillés, les indicateurs, l'historique et l'export JSON.
-Pas d'intégration Git, d'authentification publique, de correction automatique,
+Pas d'intégration Git, de correction automatique,
 d'exécution des sources ni d'installation des dépendances des projets importés.
 
 ## Architecture retenue
@@ -34,7 +34,9 @@ Un répertoire de travail distinct est réservé à chaque analyse.
 
 ## Modèle et états prévus
 
-Project : identifiant, nom, description, dates.
+User : profil, adresse unique normalisée, hash scrypt ; sessions persistées et quotas.
+Project : identifiant, nom, description, dates et propriétaire ; anciens projets
+non attribués invisibles. Voir docs/authentication.md pour les contrôles et la migration.
 Analysis : projet, état, horodatages, empreinte des sources, profil et versions
 du moteur, compteurs, erreur technique, réservation et référence temporaire.
 Les diagnostics sont inclus dans le rapport JSONB de l'analyse : chemin relatif,

@@ -26,7 +26,7 @@ export default defineConfig({
     {
       command: 'pnpm --filter @codeaudit/api start',
       url: `${apiUrl}/health`,
-      env: { DATABASE_URL: databaseUrl, PORT: process.env.E2E_API_PORT ?? '3100', CODEAUDIT_STORAGE_ROOT: storageRoot },
+      env: { DATABASE_URL: databaseUrl, PORT: process.env.E2E_API_PORT ?? '3100', CODEAUDIT_STORAGE_ROOT: storageRoot, AUTH_APP_ORIGIN: webUrl },
       reuseExistingServer: false,
     },
     {

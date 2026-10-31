@@ -1,6 +1,8 @@
 # CodeAudit
 
-Application locale mono-utilisateur d'audit statique JavaScript/TypeScript.
+Application d'audit statique JavaScript/TypeScript avec comptes et projets privés.
+Le mode de lancement documenté reste local ; l'authentification ne constitue pas
+à elle seule une validation pour un déploiement public.
 Le module de gestion des projets est disponible : création, liste, détail,
 modification et suppression persistées dans PostgreSQL.
 
@@ -31,6 +33,9 @@ Docker Compose fournit PostgreSQL ; API, frontend et worker sont lancés localem
 par `pnpm dev`. Le volume PostgreSQL conserve les données entre les arrêts.
 
 Frontend : http://127.0.0.1:5173/ (tableau de bord), puis /projects.
+Créer son compte dans `/register`, puis se connecter dans `/login` si nécessaire.
+Une session serveur restaure l'accès après rechargement ; aucun jeton n'est stocké
+dans localStorage. Les utilisateurs voient uniquement leurs projets et rapports.
 API : http://127.0.0.1:3000/api/projects ; santé du processus : /health.
 Vite transmet /api à l'API et /api/health à /health.
 PORT, WEB_PORT et API_PROXY_TARGET peuvent être définis dans le terminal pour
@@ -50,6 +55,7 @@ pnpm db:down arrête PostgreSQL en conservant son volume.
 | PORT | API : 3000, à définir dans le terminal pour la changer |
 | WEB_PORT | Vue/Vite : 5173, à définir dans le terminal |
 | API_PROXY_TARGET | http://127.0.0.1:3000 ; même port que PORT |
+| AUTH_APP_ORIGIN | Origine exacte du navigateur, défaut http://127.0.0.1:5173 ; HTTPS obligatoire en production |
 | CODEAUDIT_STORAGE_ROOT | .tmp/imports ; répertoire dédié partagé par API et worker, même valeur dans les deux processus |
 | TEST_DATABASE_URL | Base migrée distincte, nom terminé par _test, obligatoire pour intégration/E2E |
 | E2E_API_PORT, E2E_WEB_PORT | 3100 et 5175 ; ports réservés aux serveurs Playwright |
@@ -69,6 +75,10 @@ la même base et au même stockage. Un worker réessaie lorsque la base est indi
 6. Combiner les filtres par gravité, nom de fichier et règle ; naviguer entre les pages.
 7. Revenir au projet, consulter l'historique et rouvrir une ancienne analyse.
 8. Télécharger « Exporter le rapport JSON » depuis une analyse réussie.
+
+Ces étapes nécessitent un compte connecté. Le menu « Mon profil » affiche le
+profil courant ; « Se déconnecter » révoque la session en base et efface son cookie.
+Voir [l'authentification, les limites et la migration](docs/authentication.md).
 
 Pour préparer un petit ZIP depuis PowerShell, créer un dossier contenant un fichier
 `index.js` avec `missing;` et `console.log('demo');`, puis utiliser
@@ -205,13 +215,14 @@ pour fusionner vers staging. Les actions sont validables avec actionlint.
 
 ## Limites avant un usage en production
 
-Ce MVP est destiné à une démonstration locale mono-utilisateur. Les contrôles V8
+Ce MVP est destiné à une démonstration locale avec des comptes et données isolés. Les contrôles V8
 et les threads ne fournissent ni plafond RSS global, ni sandbox système, ni
 interdiction réseau. Les limites sont par import/analyse, sans quota global de
 stockage ou de file. Aucun audit des ACL Windows, test de charge prolongé,
 test de restauration de sauvegarde, audit d'image système ou pentest n'est réalisé.
-L'authentification, le déploiement public et la supervision de production restent
-à concevoir avant toute exposition réseau.
+L'authentification par session et l'isolation des données sont implémentées et testées.
+Le déploiement HTTPS public, la confiance des reverse proxies, la supervision et
+une revue de sécurité de production restent à établir avant exposition réseau.
 
 Le profil ESLint est maîtrisé et versionné, sans informations de types, résolution
 des imports ni règles de framework ; il ne certifie pas l'absence de failles.
@@ -219,11 +230,13 @@ Les dates, versions et diagnostics exportés sont ceux persistés, avec la prove
 des instantanés historiques. Voir les limites détaillées du moteur et de l'exécution.
 
 Au contrôle du 31 octobre 2026, l'audit d'exécution ne signale plus d'alerte après
-correction de Multer. L'audit complet signale encore une alerte faible sur deepmerge
-4.3.1, dépendance de développement de Jest, sans correctif publié dans
-[l'avis amont](https://github.com/advisories/GHSA-gcqx-w48m-w2h4).
-Cette dépendance sert aux configurations de test maîtrisées, jamais aux projets
-ZIP importés. Refaire les audits avant une livraison ; leur résultat évolue.
+correction de Multer et minimatch. L'audit complet signale encore deux alertes
+sur l'outillage de développement : deepmerge 4.3.1 (faible, sans correctif publié
+dans [l'avis amont](https://github.com/advisories/GHSA-gcqx-w48m-w2h4)) et glob
+(modérée, utilisé par Jest et Vue Test Utils ; le correctif nécessite une migration
+vers glob 14 selon [l'avis amont](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4)).
+Ces outils ne chargent aucune configuration des ZIP importés. Leur mise à jour
+reste à valider séparément. Refaire les audits avant une livraison ; leur résultat évolue.
 
 - [Spécification du MVP](docs/specification.md)
 - [Module projets et validation](docs/projects.md)

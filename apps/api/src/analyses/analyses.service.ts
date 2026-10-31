@@ -35,8 +35,8 @@ export class AnalysesService {
   private activeImports = 0;
   constructor(private readonly database: PrismaService) {}
 
-  async create(projectId: string, archive?: Buffer): Promise<AnalysisSummary> {
-    if (!await this.database.client.project.findUnique({ where: { id: projectId }, select: { id: true } })) {
+  async create(projectId: string, archive: Buffer | undefined, ownerId: string): Promise<AnalysisSummary> {
+    if (!await this.database.client.project.findUnique({ where: { id: projectId, ownerId }, select: { id: true } })) {
       throw new NotFoundException({ code: 'PROJECT_NOT_FOUND', message: 'Projet introuvable.' });
     }
     if (!archive) throw new BadRequestException({ code: 'ARCHIVE_REQUIRED', message: 'Joignez une archive ZIP dans le champ archive.' });
@@ -64,20 +64,20 @@ export class AnalysesService {
     } finally { this.activeImports--; }
   }
 
-  async get(id: string) {
-    const analysis = await this.database.client.analysis.findUnique({ where: { id } });
+  async get(id: string, ownerId: string) {
+    const analysis = await this.database.client.analysis.findUnique({ where: { id, project: { ownerId } } });
     if (!analysis) throw new NotFoundException({ code: 'ANALYSIS_NOT_FOUND', message: 'Analyse introuvable.' });
     return analysis;
   }
 
-  async status(id: string): Promise<AnalysisSummary> {
-    const analysis = await this.database.client.analysis.findUnique({ where: { id }, select: SUMMARY_SELECT });
+  async status(id: string, ownerId: string): Promise<AnalysisSummary> {
+    const analysis = await this.database.client.analysis.findUnique({ where: { id, project: { ownerId } }, select: SUMMARY_SELECT });
     if (!analysis) throw new NotFoundException({ code: 'ANALYSIS_NOT_FOUND', message: 'Analyse introuvable.' });
     return summary(analysis);
   }
 
-  async history(projectId: string, query: HistoryQuery) {
-    if (!await this.database.client.project.findUnique({ where: { id: projectId }, select: { id: true } })) {
+  async history(projectId: string, query: HistoryQuery, ownerId: string) {
+    if (!await this.database.client.project.findUnique({ where: { id: projectId, ownerId }, select: { id: true } })) {
       throw new NotFoundException({ code: 'PROJECT_NOT_FOUND', message: 'Projet introuvable.' });
     }
     if (query.cursor && !await this.database.client.analysis.findFirst({ where: { id: query.cursor, projectId }, select: { id: true } })) {
@@ -92,8 +92,8 @@ export class AnalysesService {
     return { items: page.map(summary), nextCursor: more ? page.at(-1)!.id : null };
   }
 
-  async results(id: string) {
-    const analysis = await this.get(id);
+  async results(id: string, ownerId: string) {
+    const analysis = await this.get(id, ownerId);
     if (analysis.status !== 'SUCCEEDED' || !analysis.report) {
       throw new ConflictException({ code: 'ANALYSIS_NOT_SUCCEEDED', message: 'Les résultats ne sont disponibles que pour une analyse réussie.' });
     }

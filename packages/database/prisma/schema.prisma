@@ -17,8 +17,39 @@ model Project {
   createdAt   DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime   @default(now()) @updatedAt @db.Timestamptz(3)
   analyses    Analysis[]
+  ownerId     String?    @db.Uuid
+  owner       User?      @relation(fields: [ownerId], references: [id], onDelete: Restrict)
 
   @@index([createdAt, id])
+  @@index([ownerId, createdAt, id])
+}
+
+model User {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String    @db.VarChar(120)
+  email        String    @unique @db.VarChar(254)
+  passwordHash String    @db.VarChar(255)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  projects     Project[]
+  sessions     Session[]
+}
+
+model Session {
+  tokenHash  String   @id @db.Char(64)
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  lastSeenAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt  DateTime @db.Timestamptz(3)
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuthThrottle {
+  keyHash     String   @id @db.Char(64)
+  count       Int
+  windowStart DateTime @db.Timestamptz(3)
+  @@index([windowStart])
 }
 
 model Analysis {

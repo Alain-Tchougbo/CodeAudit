@@ -2,6 +2,13 @@
 
 Implémentation du 30 octobre 2026.
 
+Mise à jour du 31 octobre : les routes ci-dessous nécessitent une session et ne
+retournent que les projets du compte connecté. Le modèle inclut désormais ownerId ;
+les anciens projets non affectés restent privés et inaccessibles aux nouveaux
+inscrits. Voir [authentification et migration](authentication.md). Les résultats
+chiffrés en fin de document décrivent le lot historique du 30 octobre ; les nouveaux
+contrôles sont consignés dans [le journal](experiment-log.md).
+
 ## Périmètre
 
 CRUD réel NestJS / Prisma / PostgreSQL et écrans Vue :

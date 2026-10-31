@@ -1,19 +1,7 @@
-import type { AnalysisHistory, AnalysisResults, AnalysisSummary, ApiError, Dashboard } from '@codeaudit/contracts';
+import type { AnalysisHistory, AnalysisResults, AnalysisSummary, Dashboard } from '@codeaudit/contracts';
 
-async function response(path: string, signal?: AbortSignal, options: RequestInit = {}): Promise<Response> {
-  let response: Response;
-  try { response = await fetch(`/api${path}`, { ...options, signal }); }
-  catch (error) {
-    if (signal?.aborted) throw error;
-    throw new Error('Impossible de joindre le serveur. Vérifiez que l’API est démarrée.', { cause: error });
-  }
-  if (!response.ok) {
-    let body: Partial<ApiError> = {};
-    try { body = await response.json() as Partial<ApiError>; } catch { /* Non-JSON error response. */ }
-    throw new Error(body.details?.join(' ') || body.message || 'La requête a échoué. Réessayez.');
-  }
-  return response;
-}
+import { apiResponse } from './http';
+const response = (path: string, signal?: AbortSignal, options: RequestInit = {}) => apiResponse(path, { ...options, signal });
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> { return (await response(path, signal)).json() as Promise<T>; }
 export const analysesApi = {
   create: async (projectId: string, file: File, signal?: AbortSignal): Promise<AnalysisSummary> => {

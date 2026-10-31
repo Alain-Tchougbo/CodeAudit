@@ -3,7 +3,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './authenticated';
 import { zip } from '../../packages/analysis-jobs/test/zip-builder';
 const apiUrl = `http://127.0.0.1:${process.env.E2E_API_PORT ?? '3100'}`;
 
