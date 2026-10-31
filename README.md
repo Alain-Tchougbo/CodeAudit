@@ -93,6 +93,13 @@ résolus, avec les filtres habituels. « Résolu » signifie absent du rapport c
 pas nécessairement corrigé. Les rapports doivent avoir les mêmes profils, moteurs
 et limites. La sélection peut traverser plusieurs pages d'historique.
 
+À l'import, l'option facultative « Conserver un aperçu du code » enregistre des
+extraits bornés autour des diagnostics. Elle est désactivée par défaut. « Voir le
+code » les charge à la demande ; leur suppression peut être confirmée depuis les
+résultats. Les extraits peuvent contenir des informations sensibles : ils restent
+privés au même titre que les analyses. Les fichiers temporaires sont supprimés
+après traitement ; les extraits ne sont pas ajoutés aux exports JSON existants.
+
 Pour préparer un petit ZIP depuis PowerShell, créer un dossier contenant un fichier
 `index.js` avec `missing;` et `console.log('demo');`, puis utiliser
 `Compress-Archive -Path chemin/du/dossier/* -DestinationPath demo.zip`.

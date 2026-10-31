@@ -178,6 +178,7 @@ const signed = (value: number) => `${value > 0 ? '+' : ''}${number(value)}`;
       <IssuesTable
         :key="`${key()}:${category}`"
         :issues="issues"
+        :analysis-id="category === 'resolved' ? data.baseline.id : data.target.id"
         empty-title="Aucun problème dans cette catégorie."
         empty-description="Choisissez une autre catégorie pour consulter les autres diagnostics de cette comparaison."
       />

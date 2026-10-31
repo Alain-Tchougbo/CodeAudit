@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import AppIcon from './AppIcon.vue';
 import EmptyState from './EmptyState.vue';
+import CodePreview from './CodePreview.vue';
+import { useCodeContext } from '../composables/useCodeContext';
 import { computed, ref, watch } from 'vue';
 import type { AnalysisIssue } from '@codeaudit/contracts';
-const props = withDefaults(defineProps<{ issues: AnalysisIssue[]; title?: string; emptyTitle?: string; emptyDescription?: string }>(), {
+const props = withDefaults(defineProps<{ issues: AnalysisIssue[]; title?: string; emptyTitle?: string; emptyDescription?: string; analysisId?: string }>(), {
+  analysisId: undefined,
   title: 'Problèmes détectés', emptyTitle: 'Aucun problème détecté dans cette analyse.', emptyDescription: 'Le moteur n’a relevé aucun diagnostic pour le profil de règles utilisé.',
 });
+const context = useCodeContext(() => props.analysisId);
+const confirmingDelete = ref(false);
+async function removeContext() { await context.remove(); confirmingDelete.value = false; }
 const severity = ref('');
 const file = ref('');
 const rule = ref('');
@@ -34,6 +40,46 @@ function reset() { severity.value = ''; file.value = ''; rule.value = ''; }
         </p>
       </div><span class="code-chip">{{ issues.length }} diagnostic{{ issues.length > 1 ? 's' : '' }}</span>
     </div>
+    <div
+      v-if="context.data.value?.context"
+      class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#dfe5df] bg-[#f0f4ed] p-4 text-xs"
+    >
+      <p>{{ context.data.value.context.truncated ? 'Certains extraits sont limités ou indisponibles.' : 'Extraits conservés pour cette analyse.' }}</p>
+      <button
+        class="text-link text-xs"
+        :disabled="context.removing.value"
+        @click="confirmingDelete = !confirmingDelete"
+      >
+        Supprimer les extraits de code
+      </button>
+      <div
+        v-if="confirmingDelete"
+        class="w-full border-t border-[#dfe5df] pt-3"
+      >
+        <p>Supprimer définitivement tous les extraits de cette analyse ? Le rapport de diagnostics restera disponible.</p><div class="mt-3 flex flex-wrap gap-3">
+          <button
+            class="button-danger"
+            :disabled="context.removing.value"
+            @click="removeContext"
+          >
+            {{ context.removing.value ? 'Suppression…' : 'Confirmer la suppression des extraits' }}
+          </button><button
+            class="button-secondary"
+            :disabled="context.removing.value"
+            @click="confirmingDelete = false"
+          >
+            Annuler
+          </button>
+        </div>
+      </div>
+    </div>
+    <p
+      v-if="context.error.value"
+      role="alert"
+      class="notice notice-error"
+    >
+      {{ context.error.value }}
+    </p>
     <div class="table-surface">
       <div class="grid gap-4 border-b border-[#dfe5df] bg-[#fafbf8] p-5 sm:grid-cols-2 xl:grid-cols-[1fr_1.3fr_1.3fr_130px]">
         <div>
@@ -201,6 +247,15 @@ function reset() { severity.value = ''; file.value = ''; rule.value = ''; }
                 <p class="whitespace-pre-wrap break-words text-[13px] leading-6 text-slate-700 [overflow-wrap:anywhere]">
                   {{ issue.message }}
                 </p>
+                <CodePreview
+                  v-if="analysisId"
+                  :file-path="issue.filePath"
+                  :line="issue.line"
+                  :data="context.data.value"
+                  :loading="context.loading.value"
+                  :error="context.error.value"
+                  @open="context.ensure"
+                />
               </td>
             </tr>
           </tbody>

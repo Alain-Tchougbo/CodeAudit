@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { Prisma, type PrismaClient } from '@codeaudit/database';
 import type { AnalysisReport } from '@codeaudit/analyzer';
+import type { CodeContext } from '@codeaudit/contracts';
+import { CONTEXT_LIMITS } from './code-context';
 import { EXECUTION_LIMITS, JobError } from './limits';
 import type { SourceStore } from './storage';
 
@@ -10,6 +12,7 @@ export interface Claim {
   sourceKey: string | null;
   lockToken: string;
   deadlineAt: Date;
+  captureContext?: boolean;
 }
 
 export interface ReservationOptions { leaseMs?: number; analysisMs?: number }
@@ -17,11 +20,11 @@ export interface ReservationOptions { leaseMs?: number; analysisMs?: number }
 export class AnalysisQueue {
   constructor(readonly client: PrismaClient) {}
 
-  async enqueue(projectId: string, sources: { key: string; digest: string }) {
+  async enqueue(projectId: string, sources: { key: string; digest: string }, options: { captureContext?: boolean } = {}) {
     return this.client.$transaction(async (transaction) => {
       const project = await transaction.project.findUniqueOrThrow({ where: { id: projectId } });
       return transaction.analysis.create({ data: {
-        projectId, sourceKey: sources.key, sourceDigest: sources.digest,
+        projectId, sourceKey: sources.key, sourceDigest: sources.digest, captureContext: options.captureContext ?? false,
         projectSnapshot: { id: project.id, name: project.name, description: project.description, createdAt: project.createdAt.toISOString(), updatedAt: project.updatedAt.toISOString(),
           capturedAt: new Date().toISOString(), origin: 'ANALYSIS_REQUEST' },
       } });
@@ -46,7 +49,7 @@ export class AnalysisQueue {
         "deadlineAt" = clock_timestamp() + ${analysisMs}::double precision * interval '1 millisecond',
         "leaseExpiresAt" = clock_timestamp() + LEAST(${leaseMs}::double precision, ${analysisMs}::double precision) * interval '1 millisecond'
       FROM candidate WHERE analysis."id" = candidate."id" AND analysis."status" = 'QUEUED'
-      RETURNING analysis."id", analysis."projectId", analysis."sourceKey", analysis."lockToken", analysis."deadlineAt"
+      RETURNING analysis."id", analysis."projectId", analysis."sourceKey", analysis."lockToken", analysis."deadlineAt", analysis."captureContext"
     `);
     return rows[0] ?? null;
   }
@@ -61,12 +64,15 @@ export class AnalysisQueue {
     return count === 1;
   }
 
-  async succeed(claim: Claim, report: AnalysisReport): Promise<boolean> {
+  async succeed(claim: Claim, report: AnalysisReport, context: CodeContext | null = null): Promise<boolean> {
     const json = JSON.stringify(report);
+    const contextJson = context ? JSON.stringify(context) : null;
+    if (contextJson && Buffer.byteLength(contextJson) > CONTEXT_LIMITS.storedBytes) throw new JobError('RESULT_TOO_LARGE', 'Les extraits sont trop volumineux.');
     if (Buffer.byteLength(json) > EXECUTION_LIMITS.reportBytes) throw new JobError('RESULT_TOO_LARGE', 'Rapport trop volumineux.');
     const count = await this.client.$executeRaw(Prisma.sql`
       UPDATE "Analysis" SET "status" = 'SUCCEEDED', "finishedAt" = clock_timestamp(),
         "report" = ${json}::jsonb, "statistics" = ${JSON.stringify(report.statistics)}::jsonb,
+        "codeContext" = CASE WHEN "captureContext" THEN ${contextJson}::jsonb ELSE NULL END,
         "profileVersion" = ${report.profile.version}, "errorCode" = NULL, "errorMessage" = NULL,
         "lockToken" = NULL, "leaseExpiresAt" = NULL
       WHERE "id" = ${claim.id}::uuid AND "lockToken" = ${claim.lockToken}::uuid

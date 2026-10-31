@@ -359,3 +359,41 @@ réussis ci-dessus ont suivi cette correction. Les traces sont dans .tmp/compari
 Les correspondances restent heuristiques pour occurrences identiques et renommages ;
 la pagination est côté navigateur. Les autres navigateurs/lecteurs d'écran restent
 hors des vérifications exécutées.
+
+## 31 octobre 2026 — aperçu facultatif du code, lot 2
+
+Après fusion de la PR 7 avec CI verte, branche feat/code-context créée depuis
+origin/staging. Migration 20261031000200_code_context appliquée sur les bases locale
+et dédiée de test : consentement captureContext (false par défaut) et JSON codeContext
+séparé du rapport. Le serveur local a été arrêté avant génération/migration.
+
+L'import propose un consentement explicite. Le worker lit seulement des fenêtres
+bornées autour des diagnostics, sans exécution, puis publie rapport et extraits
+atomiquement avec les gardes de réservation existantes. Les fichiers temporaires
+sont supprimés comme auparavant. Taille maximale, encodage, chemins traversants,
+liens, positions, délai et interruption sont contrôlés. Les limites et la politique
+de conservation ont été ajoutées à la spécification, au README et au guide d'analyse.
+
+GET/DELETE context sont protégés par propriétaire et CSRF pour la suppression.
+Le JSON enregistré est validé à la lecture. L'interface charge les extraits à la
+demande, partage la requête entre lignes, colore du texte échappé et permet leur
+suppression confirmée sans toucher aux diagnostics ou exports. Les comparaisons
+ouvrent le contexte de la référence pour les résolus, de la cible pour les autres.
+
+Résultats locaux réels : pnpm check réussi avec 185 tests (24 analyzer, 48 jobs,
+24 API et 89 frontend). Après amélioration des séparateurs CR/LF/Unicode, passe
+ciblée de 13 tests d'extraits réussie, dont 4 nouveaux : 189 cas unitaires/frontend
+distincts exercés au total. Typage/build API relancés après optimisation des lectures ;
+build jobs et lint final relancés. Les 103 tests d'intégration PostgreSQL réel et
+11 parcours Chromium réussissent, dont opt-in, nettoyage, conservation/rechargement,
+suppression, refus étrangers, CSRF, contexte corrompu et exports inchangés. Le parcours
+inclut un faux élément HTML avec onerror : aucun élément img n'est créé et aucun
+marqueur d'exécution n'apparaît dans window. Largeurs 320/390/1440 sans débordement.
+
+Difficulté corrigée : ESLint exigeait une valeur par défaut pour la nouvelle prop
+optionnelle analysisId ; le défaut undefined a été déclaré avant le contrôle réussi.
+Les intégrations locales ont pris environ 345 secondes ; elles ont terminé avec
+103 succès, sans présenter leur durée comme un résultat de performance garanti.
+Traces dans .tmp/context-*.log. Coloration lexicale simple, extraits parfois tronqués,
+absence d'aperçu pour les rapports antérieurs ou sans consentement ; aucun nouveau
+contrôle Safari/Firefox/lecteur d'écran ni déploiement HTTPS n'est revendiqué.

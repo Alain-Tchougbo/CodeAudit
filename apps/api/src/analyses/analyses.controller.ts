@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Query, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { IMPORT_LIMITS } from '@codeaudit/analysis-jobs';
 import { AnalysesService } from './analyses.service';
@@ -6,6 +6,7 @@ import { HistoryQuery } from './history.dto';
 import { ReportExportService } from './report-export.service';
 import { CurrentUser } from '../auth/auth.types';
 import { ComparisonQuery, ComparisonService } from './comparison.service';
+import { AnalysisOptions } from './analysis-options.dto';
 
 @Controller()
 export class AnalysesController {
@@ -32,13 +33,21 @@ export class AnalysesController {
   @Post('projects/:projectId/analyses')
   @HttpCode(202)
   @UseInterceptors(FileInterceptor('archive', {
-    limits: { fileSize: IMPORT_LIMITS.archiveBytes, files: 1, fields: 0, parts: 1 },
+    limits: { fileSize: IMPORT_LIMITS.archiveBytes, files: 1, fields: 1, parts: 2, fieldSize: 10 },
   }))
   create(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @CurrentUser() userId: string,
+    @Body() options: AnalysisOptions,
     @UploadedFile() archive?: Express.Multer.File,
-  ) { return this.analyses.create(projectId, archive?.buffer, userId); }
+  ) { return this.analyses.create(projectId, archive?.buffer, userId, options); }
+
+  @Get('analyses/:id/context')
+  context(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() userId: string) { return this.analyses.context(id, userId); }
+
+  @Delete('analyses/:id/context')
+  @HttpCode(204)
+  async deleteContext(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() userId: string) { await this.analyses.deleteContext(id, userId); }
 
   @Get('projects/:projectId/analyses')
   history(@Param('projectId', ParseUUIDPipe) projectId: string, @Query() query: HistoryQuery, @CurrentUser() userId: string) {

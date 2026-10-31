@@ -120,6 +120,13 @@ export interface AnalysisComparison {
   persistent: { baseline: AnalysisIssue; target: AnalysisIssue; positionChanged: boolean }[];
 }
 
+export interface CodeContext {
+  schemaVersion: 1;
+  truncated: boolean;
+  snippets: { filePath: string; lines: { number: number; text: string; truncated: boolean }[] }[];
+}
+export interface AnalysisCodeContext { requested: boolean; context: CodeContext | null }
+
 export interface Dashboard {
   projectCount: number;
   analysisCount: number;

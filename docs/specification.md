@@ -100,7 +100,12 @@ Ces protections sont implémentées dans packages/analysis-jobs ; détails et li
 effectives dans [l'exécution des analyses](analyses.md). Les threads ont des limites
 V8 mais aucune limite RSS globale ni isolation réseau n'est imposée actuellement.
 
-Ne pas persister les sources dans PostgreSQL ni les inclure dans les logs et exports.
+Ne pas persister les archives ou arborescences importées dans PostgreSQL, ni inclure
+du code source dans les logs et exports JSON existants. L'aperçu facultatif est une
+exception explicite et bornée : après consentement à l'import, des extraits autour
+des diagnostics sont stockés séparément du rapport, accessibles uniquement via
+l'API protégée et supprimables sans retirer les diagnostics. Cette option est
+désactivée par défaut. Les fichiers temporaires complets sont toujours supprimés.
 Les rapports et métadonnées restent jusqu'à suppression explicite.
 Supprimer un projet entraîne la suppression transactionnelle de ses rapports ;
 refuser cette opération tant qu'un travail est QUEUED ou RUNNING.

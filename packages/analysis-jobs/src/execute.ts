@@ -4,6 +4,7 @@ import { AnalysisQueue, type ReservationOptions } from './queue';
 import { EXECUTION_LIMITS, JobError } from './limits';
 import { SourceStore } from './storage';
 import { runThread } from './thread';
+import { captureCodeContext } from './code-context';
 
 export interface ProcessOptions extends ReservationOptions {
   signal?: AbortSignal;
@@ -38,7 +39,10 @@ export async function processNext(queue: AnalysisQueue, store: SourceStore, work
       timeoutMs: Math.max(1, claim.deadlineAt.getTime() - Date.now()),
       timeoutCode: 'ANALYSIS_TIMEOUT',
     });
-    if (!await queue.succeed(claim, report)) {
+    const context = claim.captureContext ? await captureCodeContext(directory, report.issues, { signal: cancellation.signal, deadlineAt: claim.deadlineAt.getTime() }) : null;
+    if (cancellation.signal.aborted) throw cancellation.signal.reason;
+    if (Date.now() >= claim.deadlineAt.getTime()) throw new JobError('ANALYSIS_TIMEOUT', 'Délai maximal de traitement dépassé.');
+    if (!await queue.succeed(claim, report, context)) {
       await queue.fail(claim, 'LEASE_LOST', 'La réservation n’est plus valide ; aucun résultat n’a été publié.');
     }
   } catch (error) {
