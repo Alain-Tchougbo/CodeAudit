@@ -111,6 +111,10 @@ describe('Comptes et sécurité — PostgreSQL et SMTP réels', () => {
     await verified(); const setup = await owner.api.post('/api/auth/mfa/setup').send({ currentPassword: password }).expect(200); await client.mfaCredential.update({ where: { userId: owner.userId }, data: { pendingExpiresAt: new Date(Date.now() - 1000) } });
     await owner.api.post('/api/auth/mfa/enable').send({ code: totp(setup.body.secret as string, Math.floor(Date.now() / 30000)) }).expect(409); expect((await owner.api.get('/api/auth/security').expect(200)).body.mfa.enabled).toBe(false);
   });
+  it('invalide un enrôlement 2FA non confirmé lors d’une rotation du mot de passe', async () => {
+    await verified(); const setup = await owner.api.post('/api/auth/mfa/setup').send({ currentPassword: password }).expect(200); await owner.api.post('/api/auth/change-password').send({ currentPassword: password, password: replacement }).expect(204);
+    const signed = await owner.api.post('/api/auth/login').send({ email: owner.email, password: replacement }).expect(200); owner.api.set('X-CSRF-Token', signed.body.csrfToken as string); await owner.api.post('/api/auth/mfa/enable').send({ code: totp(setup.body.secret as string, Math.floor(Date.now() / 30000)) }).expect(409); expect((await owner.api.get('/api/auth/security').expect(200)).body.mfa.enabled).toBe(false);
+  });
   it('exige le second facteur pour les actions sensibles et révoque après désactivation', async () => {
     const { recoveryCodes } = await enable(); await owner.api.post('/api/auth/change-password').send({ currentPassword: password, password: replacement }).expect(403);
     await owner.api.post('/api/auth/mfa/disable').send({ currentPassword: password, code: recoveryCodes[0] }).expect(204); await owner.api.get('/api/auth/me').expect(401); await login().expect(200); expect(await client.mfaCredential.count({ where: { userId: owner.userId } })).toBe(0); expect(await client.mfaRecoveryCode.count({ where: { userId: owner.userId } })).toBe(0);

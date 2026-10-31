@@ -139,5 +139,5 @@ export class AuthService implements OnModuleInit {
     });
     const token = sessionToken(request); if (token && row.tokenHash === digest(token)) this.clearCookie(response);
   }
-  async logoutAll(userId: string, response: CookieResponse) { await this.database.client.$transaction(async transaction => { await transaction.user.update({ where: { id: userId }, data: { authVersion: { increment: 1 } } }); await transaction.session.deleteMany({ where: { userId } }); await this.audit.record(userId, 'ALL_SESSIONS_REVOKED', {}, transaction); }); this.clearCookie(response); }
+  async logoutAll(userId: string, response: CookieResponse) { await this.database.client.$transaction(async transaction => { await transaction.user.update({ where: { id: userId }, data: { authVersion: { increment: 1 } } }); await transaction.session.deleteMany({ where: { userId } }); await transaction.mfaCredential.deleteMany({ where: { userId, enabledAt: null } }); await this.audit.record(userId, 'ALL_SESSIONS_REVOKED', {}, transaction); }); this.clearCookie(response); }
 }

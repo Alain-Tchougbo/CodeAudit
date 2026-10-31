@@ -9,6 +9,7 @@ const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 export async function invalidateCredentials(transaction: Prisma.TransactionClient, userId: string) {
   await transaction.session.deleteMany({ where: { userId } }); await transaction.apiKey.deleteMany({ where: { userId } });
   await transaction.passwordResetToken.deleteMany({ where: { userId } }); await transaction.emailVerification.deleteMany({ where: { userId } }); await transaction.oAuthFlow.deleteMany({ where: { userId } });
+  await transaction.mfaCredential.deleteMany({ where: { userId, enabledAt: null } });
 }
 @Injectable()
 export class MfaService {
@@ -46,7 +47,7 @@ export class MfaService {
       if (!changed.count) throw new ConflictException('Configuration expirée ou déjà confirmée.');
       await transaction.mfaRecoveryCode.deleteMany({ where: { userId } }); await transaction.mfaRecoveryCode.createMany({ data: recoveryCodes.map(value => ({ userId, codeHash: hash(`${userId}:${value}`) })) });
       const updated = await transaction.user.update({ where: { id: userId }, data: { authVersion: { increment: 1 } } }); await invalidateCredentials(transaction, userId); await this.audit.record(userId, 'MFA_ENABLED', {}, transaction); return updated.authVersion;
-    }); return { recoveryCodes, authVersion };
+    }).catch(error => this.concurrent(error)); return { recoveryCodes, authVersion };
   }
   async disable(userId: string, authVersion: number) {
     await this.database.client.$transaction(async transaction => {
