@@ -19,6 +19,9 @@ export class MailService {
     const url = this.link('/team-invitation', token);
     return this.send(email, 'Invitation à rejoindre une équipe CodeAudit', `Pour rejoindre une équipe CodeAudit, ouvrez ce lien :\n\n${url}\n\nÉquipe : ${teamName}\n\nConnectez-vous ou créez un compte avec cette adresse e-mail. Le lien est valable 7 jours et utilisable une seule fois. Ignorez ce message si cette invitation ne vous concerne pas.`);
   }
+  async verify(email: string, token: string, changeEmail: boolean) {
+    return this.send(email, changeEmail ? 'Confirmez votre nouvelle adresse CodeAudit' : 'Vérifiez votre adresse CodeAudit', `Pour ${changeEmail ? 'confirmer votre nouvelle adresse' : 'vérifier votre adresse'}, ouvrez ce lien :\n\n${this.link('/verify-email', token)}\n\nCe lien est valable 30 minutes et utilisable une seule fois. Ignorez ce message si vous n’êtes pas à l’origine de cette demande.`);
+  }
   private async send(email: string, subject: string, text: string) {
     this.assertConfigured();
     const port = Number(process.env.SMTP_PORT ?? 587); const host = process.env.SMTP_HOST!;

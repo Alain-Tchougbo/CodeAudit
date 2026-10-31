@@ -12,12 +12,14 @@ import AccountRecoveryView from './views/AccountRecoveryView.vue';
 import TeamsListView from './views/TeamsListView.vue';
 import TeamDetailView from './views/TeamDetailView.vue';
 import TeamInvitationView from './views/TeamInvitationView.vue';
+import VerifyEmailView from './views/VerifyEmailView.vue';
 import { restoreSession } from './auth';
 import { authState } from './auth-state';
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
+    { path: '/verify-email', name: 'verify-email', component: VerifyEmailView, meta: { public: true, allowAuthenticated: true } },
     { path: '/teams', name: 'teams', component: TeamsListView },
     { path: '/teams/:id', name: 'team-detail', component: TeamDetailView },
     { path: '/team-invitation', name: 'team-invitation', component: TeamInvitationView, meta: { public: true, allowAuthenticated: true } },
@@ -39,7 +41,7 @@ export const router = createRouter({
 router.beforeEach(async (to) => {
   try { await restoreSession(); } catch { if (!to.meta.public) return { name: 'login', query: { redirect: to.fullPath } }; }
   if (!to.meta.public && !authState.user.value) return { name: 'login', query: { redirect: to.fullPath } };
-  if (to.meta.public && !to.meta.allowAuthenticated && authState.user.value) return '/';
+  if (to.meta.public && !to.meta.allowAuthenticated && authState.user.value) return to.query.oauthError ? { path: '/profile', query: { oauthError: 'failed' } } : '/';
 });
 window.addEventListener('codeaudit-session-expired', () => {
   if (!router.currentRoute.value.meta.public) void router.replace({ name: 'login', query: { reason: 'expired', redirect: router.currentRoute.value.fullPath } });

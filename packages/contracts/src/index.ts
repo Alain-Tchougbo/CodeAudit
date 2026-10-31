@@ -12,6 +12,16 @@ export const ANALYSIS_ARCHIVE_MAX_BYTES = 10 * 1024 * 1024;
 export interface AuthUser { id: string; name: string; email: string; createdAt: string }
 export interface AuthProfile { user: AuthUser; csrfToken: string; expiresAt: string }
 export interface ActiveSession { id: string; current: boolean; createdAt: string; lastSeenAt: string; expiresAt: string }
+export type OAuthProvider = 'GITHUB' | 'GITLAB';
+export interface AccountSecurityState {
+  emailVerifiedAt: string | null;
+  mfa: { enabled: boolean; available: boolean; recoveryCodesRemaining: number };
+  identities: { provider: string; login: string; createdAt: string }[];
+  providers: { provider: OAuthProvider; configured: boolean }[];
+}
+export interface SecurityEventItem { id: string; type: string; provider: string | null; sessionId: string | null; createdAt: string }
+export interface SecurityEventsPage { items: SecurityEventItem[]; nextCursor: string | null }
+export interface MfaSetup { secret: string; uri: string; expiresInSeconds: number }
 
 export interface Project {
   team: { id: string; name: string } | null;

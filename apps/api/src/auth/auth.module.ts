@@ -9,6 +9,12 @@ import { RecoveryService } from './recovery.service';
 import { AccountController } from './account.controller';
 import { ApiKeyService } from './api-key.service';
 import { ApiKeyController } from './api-key.controller';
+import { AccountSecurityController } from './account-security.controller';
+import { AccountSecurityService } from './account-security.service';
+import { SecurityCrypto } from './security-crypto';
+import { SecurityAuditService } from './security-audit.service';
+import { MfaService } from './mfa.service';
+import { OAuthService } from './oauth.service';
 @Injectable()
 class SessionGuard implements CanActivate {
   constructor(private readonly auth: AuthService, private readonly reflector: Reflector, private readonly keys: ApiKeyService) {}
@@ -33,5 +39,5 @@ class AuthController {
   @Public() @Post('logout') @HttpCode(204)
   async logout(@Req() request: AuthRequest, @Res({ passthrough: true }) response: CookieResponse) { await this.auth.logout(request, response); }
 }
-@Module({ imports: [DatabaseModule], controllers: [AuthController, AccountController, ApiKeyController], providers: [AuthService, ApiKeyService, MailService, RecoveryService, { provide: APP_GUARD, useClass: SessionGuard }], exports: [AuthService, MailService] })
+@Module({ imports: [DatabaseModule], controllers: [AuthController, AccountController, ApiKeyController, AccountSecurityController], providers: [SecurityCrypto, SecurityAuditService, MfaService, AccountSecurityService, OAuthService, AuthService, ApiKeyService, MailService, RecoveryService, { provide: APP_GUARD, useClass: SessionGuard }], exports: [AuthService, MailService] })
 export class AuthModule {}

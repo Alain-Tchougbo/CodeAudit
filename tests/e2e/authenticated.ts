@@ -5,6 +5,8 @@ import { cleanupAccounts } from './auth-admin';
 const apiUrl = `http://127.0.0.1:${process.env.E2E_API_PORT ?? '3100'}`;
 export const test = base.extend<{ account: AuthProfile }>({
   account: [async ({ page }, use) => {
+    // Test-only dedicated database; each sequential scenario starts with independent quotas.
+    await cleanupAccounts([], []);
     const email = `e2e-${randomUUID()}@example.test`;
     const response = await page.request.post(`${apiUrl}/api/auth/register`, { headers: { 'X-CodeAudit-Request': '1' }, data: { name: 'Browser test', email, password: 'Browser test password 2026!' } });
     expect(response.status()).toBe(201); const profile = await response.json() as AuthProfile;

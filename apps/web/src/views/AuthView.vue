@@ -2,16 +2,23 @@
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { authenticate, safeRedirect } from '../auth';
-import { authState } from '../auth-state';
+import { authState, acceptProfile } from '../auth-state';
+import type { AuthProfile } from '@codeaudit/contracts';
+import { ApiRequestError } from '../api/http';
+import { securityMutation } from '../api/account-security';
+import OAuthLogin from '../components/OAuthLogin.vue';
 import AppIcon from '../components/AppIcon.vue';
 const route = useRoute(); const router = useRouter();
 const registering = computed(() => route.name === 'register');
+const oauthMfa = computed(() => !registering.value && route.query.oauth === 'mfa');
+const mfaRequired = ref(false); const code = ref('');
+const completionMessages: Record<string, string> = { 'password-changed': 'Mot de passe changé. Reconnectez-vous sur cet appareil.', 'mfa-disabled': 'La double authentification est désactivée. Reconnectez-vous.', 'oauth-unlinked': 'Compte externe dissocié. Reconnectez-vous avec votre mot de passe.', 'account-deleted': 'Votre compte et vos données personnelles ont été supprimés.' };
 const name = ref(''); const email = ref(''); const password = ref(''); const busy = ref(false); const error = ref(''); const showPassword = ref(false);
-watch(() => route.name, () => { name.value = ''; email.value = ''; password.value = ''; error.value = ''; showPassword.value = false; });
+watch(() => route.fullPath, () => { name.value = ''; email.value = ''; password.value = ''; code.value = ''; mfaRequired.value = false; error.value = ''; showPassword.value = false; });
 async function submit() {
   if (busy.value) return; busy.value = true; error.value = '';
-  try { await authenticate(registering.value ? 'register' : 'login', { ...(registering.value ? { name: name.value } : {}), email: email.value, password: password.value }); password.value = ''; await router.replace(safeRedirect(route.query.redirect)); }
-  catch (cause) { error.value = cause instanceof Error ? cause.message : 'Authentification impossible.'; }
+  try { if (oauthMfa.value) acceptProfile(await securityMutation<AuthProfile>('oauth/mfa', { code: code.value.trim().toLowerCase() })); else await authenticate(registering.value ? 'register' : 'login', { ...(registering.value ? { name: name.value } : {}), email: email.value, password: password.value, ...(code.value.trim() ? { code: code.value.trim().toLowerCase() } : {}) }); password.value = ''; code.value = ''; await router.replace(safeRedirect(route.query.redirect)); }
+  catch (cause) { if (cause instanceof ApiRequestError && cause.code === 'MFA_REQUIRED') mfaRequired.value = true; error.value = cause instanceof Error ? cause.message : 'Authentification impossible.'; }
   finally { busy.value = false; }
 }
 </script>
@@ -23,7 +30,7 @@ async function submit() {
           {{ registering ? 'Un nouvel espace, pour votre code' : 'Heureux de vous retrouver' }}
         </p>
         <h1 class="page-title">
-          {{ registering ? 'Créer un compte' : 'Connexion' }}
+          {{ oauthMfa ? 'Double authentification' : registering ? 'Créer un compte' : 'Connexion' }}
         </h1>
         <p class="page-description mb-8">
           {{ registering ? 'Commencez à analyser vos projets dans un espace qui vous appartient.' : 'Retrouvez vos projets, vos analyses et les détails qui comptent.' }}
@@ -49,6 +56,20 @@ async function submit() {
         >
           {{ route.query.logout === 'all' ? 'Toutes les sessions ont été fermées.' : 'Cette session a été fermée.' }}
         </p>
+        <p
+          v-if="completionMessages[String(route.query.reason)]"
+          role="status"
+          class="notice notice-success"
+        >
+          {{ completionMessages[String(route.query.reason)] }}
+        </p>
+        <p
+          v-if="route.query.oauthError"
+          role="alert"
+          class="notice notice-error"
+        >
+          La connexion externe n’a pas abouti. Le compte doit être associé depuis votre profil, le fournisseur configuré et le lien valide.
+        </p>
         <form
           method="post"
           :aria-busy="busy"
@@ -72,7 +93,7 @@ async function submit() {
                 maxlength="120"
               >
             </div>
-            <div>
+            <div v-if="!oauthMfa">
               <label
                 for="auth-email"
                 class="field-label"
@@ -87,7 +108,7 @@ async function submit() {
                 maxlength="254"
               >
             </div>
-            <div>
+            <div v-if="!oauthMfa">
               <label
                 for="auth-password"
                 class="field-label"
@@ -125,6 +146,23 @@ async function submit() {
                 class="text-link mt-2 text-xs"
               >Mot de passe oublié ?</RouterLink>
             </div>
+            <div v-if="mfaRequired || oauthMfa">
+              <label
+                for="auth-mfa-code"
+                class="field-label"
+              >Code 2FA ou code de secours</label><input
+                id="auth-mfa-code"
+                v-model="code"
+                class="field font-mono"
+                required
+                maxlength="40"
+                autocomplete="one-time-code"
+                autocapitalize="off"
+                spellcheck="false"
+              ><p class="field-help mt-2">
+                Utilisez le code de votre application ou un code de secours non utilisé.
+              </p>
+            </div>
             <button
               type="submit"
               class="button-primary mt-2 w-full"
@@ -148,6 +186,7 @@ async function submit() {
             {{ error }}
           </p>
         </form>
+        <OAuthLogin v-if="!registering && !oauthMfa" />
         <p class="mt-7 text-center text-sm text-slate-600">
           {{ registering ? 'Vous avez déjà un compte ?' : 'Pas encore de compte ?' }} <RouterLink
             class="font-semibold text-indigo-700 underline underline-offset-4"

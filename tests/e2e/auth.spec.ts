@@ -16,7 +16,7 @@ test('inscription responsive, profil, rechargement, deconnexion et reconnexion',
   await expect(page).toHaveURL(/\/projects\/new$/); expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   const cookie = (await page.context().cookies()).find((item) => item.name === 'codeaudit.sid')!; expect(cookie.httpOnly).toBe(true); expect(cookie.sameSite).toBe('Lax');
   expect(await page.evaluate(() => document.cookie.includes('codeaudit.sid'))).toBe(false);
-  await page.getByRole('link', { name: 'Mon profil' }).click(); await expect(page.getByText(email, { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Mon profil' }).click(); await expect(page.getByRole('definition').filter({ hasText: email })).toBeVisible();
   await page.reload(); await expect(page.getByRole('heading', { name: 'Mon profil' })).toBeVisible();
   expect(await page.evaluate(() => localStorage.length + sessionStorage.length)).toBe(0);
   await page.getByRole('button', { name: 'Se déconnecter' }).click(); await expect(page).toHaveURL(/\/login$/);

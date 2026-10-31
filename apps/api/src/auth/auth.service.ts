@@ -6,11 +6,15 @@ import { PrismaService } from '../database/prisma.service';
 import type { AuthRequest, CookieResponse } from './auth.types';
 import type { LoginDto, RegisterDto } from './auth.dto';
 import { hashPassword, verifyPassword } from './password';
+import { MfaService } from './mfa.service';
+import { SecurityAuditService } from './security-audit.service';
+import type { CredentialsDto } from './account-security.dto';
 export const SESSION_MS = 8 * 60 * 60 * 1000;
 export const IDLE_MS = 30 * 60 * 1000;
 export const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 export const throttleKey = (operation: string, kind: string, value: string) => digest(`${operation}:${kind}:${value}`);
-const userSelect = { id: true, name: true, email: true, createdAt: true } as const;
+const userSelect = { id: true, name: true, email: true, createdAt: true, authVersion: true } as const;
+const publicUser = (user: { id: string; name: string; email: string; createdAt: Date }) => ({ id: user.id, name: user.name, email: user.email, createdAt: user.createdAt.toISOString() });
 export function cookieName() { return process.env.NODE_ENV === 'production' ? '__Host-codeaudit.sid' : 'codeaudit.sid'; }
 export function sessionToken(request: AuthRequest): string | null {
   const header = request.headers.cookie;
@@ -23,7 +27,7 @@ export function sessionToken(request: AuthRequest): string | null {
 const csrf = (token: string) => createHmac('sha256', token).update('codeaudit-csrf-v1').digest('hex');
 @Injectable()
 export class AuthService implements OnModuleInit {
-  constructor(private readonly database: PrismaService) {}
+  constructor(private readonly database: PrismaService, private readonly mfa: MfaService, private readonly audit: SecurityAuditService) {}
   onModuleInit() {
     if (process.env.NODE_ENV === 'production' && (!process.env.AUTH_APP_ORIGIN || new URL(process.env.AUTH_APP_ORIGIN).protocol !== 'https:')) throw new Error('AUTH_APP_ORIGIN HTTPS obligatoire en production.');
   }
@@ -47,7 +51,7 @@ export class AuthService implements OnModuleInit {
     const actual = request.headers['x-csrf-token']; const expected = csrf(token);
     if (typeof actual !== 'string' || !/^[a-f0-9]{64}$/.test(actual) || !timingSafeEqual(Buffer.from(actual, 'hex'), Buffer.from(expected, 'hex'))) throw new ForbiddenException({ code: 'CSRF_INVALID', message: 'Protection de session invalide. Rechargez la page.' });
   }
-  async limit(request: AuthRequest, operation: 'login' | 'register' | 'reset' | 'invite', email: string) {
+  async limit(request: AuthRequest, operation: 'login' | 'register' | 'reset' | 'invite' | 'verify' | 'reauth' | 'oauth', email: string) {
     const ip = (request.socket.remoteAddress ?? 'unknown').replace(/^::ffff:/, '').replace(/^::1$/, '127.0.0.1');
     for (const [kind, value, limit] of [['ip', ip, operation === 'login' ? 30 : 10], ['email', email, operation === 'reset' || operation === 'invite' ? 3 : 10]] as const) {
       const key = throttleKey(operation, kind, value);
@@ -61,21 +65,25 @@ export class AuthService implements OnModuleInit {
       if (!accepted) throw new HttpException({ code: 'AUTH_RATE_LIMIT', message: 'Trop de tentatives. Réessayez dans 15 minutes.' }, 429);
     }
   }
-  async issue(userId: string, request: AuthRequest, response: CookieResponse): Promise<AuthProfile> {
+  async issue(userId: string, request: AuthRequest, response: CookieResponse, expectedVersion?: number, event?: { type: 'LOGIN_SUCCEEDED' | 'OAUTH_LOGIN_SUCCEEDED'; provider?: string }): Promise<AuthProfile> {
     const token = randomBytes(32).toString('hex'); const now = new Date();
     const previous = sessionToken(request);
     const session = await this.database.client.$transaction(async (transaction) => {
+      const user = await transaction.user.findUnique({ where: { id: userId, ...(expectedVersion === undefined ? {} : { authVersion: expectedVersion }) } });
+      if (!user) throw new UnauthorizedException({ code: 'AUTH_CHANGED', message: 'Les accès ont changé. Reconnectez-vous.' });
       await transaction.session.deleteMany({ where: { OR: [{ expiresAt: { lte: now } }, { lastSeenAt: { lte: new Date(now.getTime() - IDLE_MS) } }, ...(previous ? [{ tokenHash: digest(previous) }] : [])] } });
       await transaction.authThrottle.deleteMany({ where: { windowStart: { lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) } } });
-      return transaction.session.create({ data: { tokenHash: digest(token), userId, expiresAt: new Date(now.getTime() + SESSION_MS), lastSeenAt: now }, include: { user: { select: userSelect } } });
+      const created = await transaction.session.create({ data: { tokenHash: digest(token), userId, authVersion: user.authVersion, expiresAt: new Date(now.getTime() + SESSION_MS), lastSeenAt: now }, include: { user: { select: userSelect } } });
+      if (event) await this.audit.record(userId, event.type, { provider: event.provider, sessionId: created.id }, transaction);
+      return created;
     });
     this.setCookie(response, token);
-    return { user: { ...session.user, createdAt: session.user.createdAt.toISOString() }, csrfToken: csrf(token), expiresAt: session.expiresAt.toISOString() };
+    return { user: publicUser(session.user), csrfToken: csrf(token), expiresAt: session.expiresAt.toISOString() };
   }
   async register(input: RegisterDto, request: AuthRequest, response: CookieResponse) {
     this.checkOrigin(request); await this.limit(request, 'register', input.email);
     const passwordHash = await hashPassword(input.password);
-    try { const user = await this.database.client.user.create({ data: { name: input.name, email: input.email, passwordHash } }); return await this.issue(user.id, request, response); }
+    try { const user = await this.database.client.user.create({ data: { name: input.name, email: input.email, passwordHash } }); await this.audit.record(user.id, 'REGISTERED'); return await this.issue(user.id, request, response, user.authVersion); }
     catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new ConflictException({ code: 'EMAIL_ALREADY_USED', message: 'Cette adresse e-mail est déjà utilisée.' });
       throw error;
@@ -85,14 +93,20 @@ export class AuthService implements OnModuleInit {
     this.checkOrigin(request); await this.limit(request, 'login', input.email);
     const user = await this.database.client.user.findUnique({ where: { email: input.email } });
     const valid = await verifyPassword(input.password, user?.passwordHash);
-    if (!user || !valid) throw new UnauthorizedException({ code: 'INVALID_CREDENTIALS', message: 'Adresse e-mail ou mot de passe incorrect.' });
-    return this.issue(user.id, request, response);
+    if (!user || !valid) { if (user) await this.audit.record(user.id, 'LOGIN_FAILED'); throw new UnauthorizedException({ code: 'INVALID_CREDENTIALS', message: 'Adresse e-mail ou mot de passe incorrect.' }); }
+    try { await this.mfa.verify(user.id, input.code, true); } catch (error) { if (input.code) await this.audit.record(user.id, 'LOGIN_FAILED'); throw error; }
+    return this.issue(user.id, request, response, user.authVersion, { type: 'LOGIN_SUCCEEDED' });
+  }
+  async sensitive(userId: string, input: CredentialsDto, request: AuthRequest) {
+    await this.limit(request, 'reauth', userId); const user = await this.database.client.user.findUniqueOrThrow({ where: { id: userId } });
+    if (!await verifyPassword(input.currentPassword, user.passwordHash)) throw new ForbiddenException({ code: 'INVALID_CURRENT_PASSWORD', message: 'Le mot de passe actuel est incorrect.' });
+    await this.mfa.verify(userId, input.code); return user;
   }
   async authenticate(request: AuthRequest, response: CookieResponse): Promise<AuthProfile> {
     const token = sessionToken(request);
     const now = new Date();
     const session = token ? await this.database.client.session.findUnique({ where: { tokenHash: digest(token) }, include: { user: { select: userSelect } } }) : null;
-    if (!session || session.expiresAt <= now || session.lastSeenAt.getTime() <= now.getTime() - IDLE_MS) {
+    if (!session || session.authVersion !== session.user.authVersion || session.expiresAt <= now || session.lastSeenAt.getTime() <= now.getTime() - IDLE_MS) {
       if (token) await this.database.client.session.deleteMany({ where: { tokenHash: digest(token) } });
       this.clearCookie(response);
       throw new UnauthorizedException({ code: token ? 'SESSION_EXPIRED' : 'AUTH_REQUIRED', message: token ? 'Votre session a expiré. Reconnectez-vous.' : 'Connectez-vous pour accéder à cette ressource.' });
@@ -101,7 +115,7 @@ export class AuthService implements OnModuleInit {
     const touched = await this.database.client.session.updateMany({ where: { tokenHash: session.tokenHash, expiresAt: { gt: now }, lastSeenAt: { gt: new Date(now.getTime() - IDLE_MS) } }, data: { lastSeenAt: now } });
     if (!touched.count) throw new UnauthorizedException({ code: 'SESSION_EXPIRED', message: 'Votre session a expiré. Reconnectez-vous.' });
     response.setHeader('Cache-Control', 'no-store');
-    return { user: { ...session.user, createdAt: session.user.createdAt.toISOString() }, csrfToken: csrf(token!), expiresAt: session.expiresAt.toISOString() };
+    return { user: publicUser(session.user), csrfToken: csrf(token!), expiresAt: session.expiresAt.toISOString() };
   }
   async logout(request: AuthRequest, response: CookieResponse) {
     this.checkOrigin(request); const token = sessionToken(request);
@@ -109,6 +123,7 @@ export class AuthService implements OnModuleInit {
       const session = await this.database.client.session.findUnique({ where: { tokenHash: digest(token) } });
       if (session && session.expiresAt > new Date() && session.lastSeenAt.getTime() > Date.now() - IDLE_MS) this.checkCsrf(request, token);
       await this.database.client.session.deleteMany({ where: { tokenHash: digest(token) } });
+      if (session) await this.audit.record(session.userId, 'LOGOUT');
     }
     this.clearCookie(response);
   }
@@ -118,10 +133,11 @@ export class AuthService implements OnModuleInit {
     return rows.map(row => ({ id: row.id, current: !!token && row.tokenHash === digest(token), createdAt: row.createdAt.toISOString(), lastSeenAt: row.lastSeenAt.toISOString(), expiresAt: row.expiresAt.toISOString() }));
   }
   async revoke(userId: string, id: string, request: AuthRequest, response: CookieResponse) {
-    const row = await this.database.client.session.findFirst({ where: { id, userId }, select: { tokenHash: true } });
-    if (!row) throw new NotFoundException({ code: 'SESSION_NOT_FOUND', message: 'Session introuvable.' });
-    await this.database.client.session.deleteMany({ where: { id, userId } });
+    const row = await this.database.client.$transaction(async transaction => {
+      const target = await transaction.session.findFirst({ where: { id, userId }, select: { tokenHash: true } }); if (!target) throw new NotFoundException({ code: 'SESSION_NOT_FOUND', message: 'Session introuvable.' });
+      await transaction.session.deleteMany({ where: { id, userId } }); await this.audit.record(userId, 'SESSION_REVOKED', { sessionId: id }, transaction); return target;
+    });
     const token = sessionToken(request); if (token && row.tokenHash === digest(token)) this.clearCookie(response);
   }
-  async logoutAll(userId: string, response: CookieResponse) { await this.database.client.session.deleteMany({ where: { userId } }); this.clearCookie(response); }
+  async logoutAll(userId: string, response: CookieResponse) { await this.database.client.$transaction(async transaction => { await transaction.user.update({ where: { id: userId }, data: { authVersion: { increment: 1 } } }); await transaction.session.deleteMany({ where: { userId } }); await this.audit.record(userId, 'ALL_SESSIONS_REVOKED', {}, transaction); }); this.clearCookie(response); }
 }

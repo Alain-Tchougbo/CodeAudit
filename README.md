@@ -50,6 +50,7 @@ Prérequis : Node.js 24.15+ dans la branche 24, pnpm 12.3.4, Docker avec Compose
 ```powershell
 pnpm install --frozen-lockfile
 if (!(Test-Path .env)) { Copy-Item .env.example .env }
+pnpm auth:init-key
 pnpm db:up
 pnpm db:migrate
 pnpm mail:up
@@ -108,6 +109,21 @@ depuis la fiche projet. Le partage donne accès à tout son historique, ses rapp
 et ses extraits enregistrés, et révoque ses clés CI existantes. Un membre retiré
 perd l'accès, même s'il a créé le projet. Les réglages et suppressions nécessitent
 un administrateur. [Droits, endpoints et limites des équipes](docs/teams.md).
+
+### Comptes et sécurité
+
+« Mon profil » permet de modifier son nom, vérifier ou changer son adresse e-mail,
+changer son mot de passe, configurer la 2FA TOTP avec codes de secours, associer
+GitHub/GitLab, exporter ses données, consulter les événements et supprimer son compte.
+Sessions et récupération par e-mail restent disponibles. Les actions sensibles
+exigent le mot de passe actuel et la 2FA si active. La suppression conserve les
+projets partagés et protège le dernier administrateur d'une équipe active.
+
+Initialiser SECURITY_ENCRYPTION_KEY avec `pnpm auth:init-key` et sauvegarder cette
+clé hors de Git. GitHub/GitLab nécessitent aussi leurs identifiants d'application
+OAuth côté serveur ; les boutons restent indisponibles sans configuration. Les
+échanges sont testés avec un transport contrôlé, sans prétendre avoir vérifié une
+connexion réelle chez les fournisseurs. [Configuration et comportement détaillés](docs/account-security.md).
 
 ### Configuration
 
