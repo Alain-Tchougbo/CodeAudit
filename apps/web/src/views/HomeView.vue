@@ -76,7 +76,7 @@ const diagnostics = computed(() => (data.value?.errorCount ?? 0) + (data.value?.
         />{{ number(data.queuedCount) }} en attente</span><span class="flex items-center gap-2"><span
           class="size-1.5 rounded-full bg-blue-500"
           aria-hidden="true"
-        />{{ number(data.runningCount) }} en cours</span>
+        />{{ number(data.runningCount) }} en cours</span><span>{{ number(data.cancelledCount) }} annulées</span>
       </div>
       <div class="mt-9 grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_300px]">
         <section

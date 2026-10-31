@@ -12,6 +12,13 @@ le suivi, l'historique et les rapports JSON persistés. Un worker indépendant t
 la file PostgreSQL, avec réservation atomique, délais et reprise après interruption.
 Le tableau de bord et les pages de consultation des analyses sont disponibles.
 
+Une analyse en attente ou en cours peut être annulée depuis son détail, après
+confirmation. En cours, « Annulation demandée » précède l'arrêt effectif ; l'état
+final est « Annulée », distinct d'un échec technique. Aucun rapport partiel n'est
+publié et une nouvelle analyse nécessite un nouvel import. Les sources annulées
+sont supprimées par le worker ; si celui-ci est arrêté, ce nettoyage attend son
+redémarrage. Les rapports des autres analyses restent conservés.
+
 Dans la fiche d'un projet, « Profil de règles » propose Essentiel
 (`codeaudit-js-ts-v1`, comportement historique) et Strict
 (`codeaudit-js-ts-strict-v1`). Le détail des règles vient de l'API. Le choix est

@@ -18,6 +18,7 @@ export class DashboardController {
           COUNT(*) FILTER (WHERE status IN ('SUCCEEDED', 'FAILED'))::float8 AS "completedCount",
           COUNT(*) FILTER (WHERE status = 'SUCCEEDED')::float8 AS "succeededCount",
           COUNT(*) FILTER (WHERE status = 'FAILED')::float8 AS "failedCount",
+          COUNT(*) FILTER (WHERE status = 'CANCELLED')::float8 AS "cancelledCount",
           COUNT(*) FILTER (WHERE status = 'QUEUED')::float8 AS "queuedCount",
           COUNT(*) FILTER (WHERE status = 'RUNNING')::float8 AS "runningCount",
           COALESCE(SUM((statistics->>'errorCount')::bigint) FILTER (WHERE status = 'SUCCEEDED'), 0)::float8 AS "errorCount",

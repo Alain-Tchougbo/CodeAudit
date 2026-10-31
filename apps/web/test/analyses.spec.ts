@@ -20,6 +20,7 @@ const report: AnalysisResults = {
   statistics: { ...analysis.statistics!, durationMs: 1250, ignoredEntryCount: 2, bytesRead: 512 },
 };
 const dashboard: Dashboard = {
+  cancelledCount: 0,
   projectCount: 2, analysisCount: 7, completedCount: 5, succeededCount: 3, failedCount: 2,
   queuedCount: 1, runningCount: 1, errorCount: 9, warningCount: 4,
   latestAnalyses: [{ ...analysis, projectName: 'Projet API' }],
@@ -123,6 +124,12 @@ describe('Détail d’une analyse', () => {
     const { wrapper } = await screen('/analyses/failed'); await flushPromises();
     expect(wrapper.get('[role="alert"]').text()).toContain('Délai dépassé.');
     expect(analysesApi.results).not.toHaveBeenCalled(); expect(wrapper.find('table').exists()).toBe(false);
+  });
+  it('distingue une annulation et arrête le suivi sans demander de rapport', async () => {
+    vi.useFakeTimers(); vi.mocked(analysesApi.get).mockResolvedValue({ ...analysis, status: 'CANCELLED', error: null, statistics: null });
+    const { wrapper } = await screen('/analyses/cancelled'); await flushPromises();
+    expect(wrapper.text()).toContain('Annulée'); expect(wrapper.text()).toContain('Aucun rapport n’a été publié'); expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(analysesApi.results).not.toHaveBeenCalled(); await vi.advanceTimersByTimeAsync(9000); expect(analysesApi.get).toHaveBeenCalledTimes(1);
   });
   it('suit QUEUED puis RUNNING puis SUCCEEDED et arrête le polling', async () => {
     vi.useFakeTimers();

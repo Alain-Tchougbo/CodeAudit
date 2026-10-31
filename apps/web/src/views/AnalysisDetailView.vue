@@ -9,6 +9,7 @@ import IssuesTable from '../components/IssuesTable.vue';
 import MetricCard from '../components/MetricCard.vue';
 import ResourceState from '../components/ResourceState.vue';
 import ReportExport from '../components/ReportExport.vue';
+import CancelAnalysis from '../components/CancelAnalysis.vue';
 import { date, duration, number } from '../format';
 const route = useRoute();
 const { data, loading, error, reload, now } = useAnalysisDetail(() => String(route.params.id));
@@ -103,6 +104,12 @@ const elapsed = computed(() => {
           </div>
         </dl>
         <AnalysisProgress :status="data.analysis.status" />
+        <p
+          v-if="data.analysis.status === 'RUNNING' && data.analysis.heartbeatAt"
+          class="mt-4 text-xs text-slate-500"
+        >
+          Dernier signal du worker : {{ date(data.analysis.heartbeatAt) }}<span v-if="data.analysis.deadlineAt"> · Échéance du traitement : {{ date(data.analysis.deadlineAt) }}</span>
+        </p>
         <details class="mt-5 border-t border-[#e4e9df] pt-4 text-xs text-slate-500">
           <summary class="min-h-7 cursor-pointer font-medium text-indigo-700">
             Informations techniques et provenance
@@ -155,6 +162,18 @@ const elapsed = computed(() => {
           Aucun résultat de code n’est disponible. Une nouvelle tentative nécessite un nouvel import.
         </p>
       </div>
+      <p
+        v-else-if="data.analysis.status === 'CANCELLED'"
+        role="status"
+        class="notice notice-info"
+      >
+        Analyse annulée. Aucun rapport n’a été publié. Les rapports des autres analyses sont conservés.
+      </p>
+      <CancelAnalysis
+        :key="data.analysis.id"
+        :analysis="data.analysis"
+        @updated="reload"
+      />
       <template v-if="data.report">
         <dl class="metrics-strip">
           <MetricCard

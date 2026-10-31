@@ -451,3 +451,29 @@ PostgreSQL réels réussis en 22 secondes : propriété/CSRF/validation, snapsho
 exécution et exports inchangés, comparaison incompatible, profil inconnu refusé,
 contrainte SQL et refus de publication incompatible. Suites complètes intégration
 et Chromium lancées ; résultats définitifs à inscrire après exécution.
+
+Résultats définitifs du lot 4 : 116/116 intégrations PostgreSQL réelles réussies
+(317 secondes), 14/14 parcours Chromium réussis (1,8 minute), dont règles
+strictes réelles et détail des règles déplié aux largeurs 320/390/1440. CI verte.
+PR 10 fusionnée par squash sur staging8ee5e08 après revalidation pr-policy ;
+branche feat/analysis-cancellation alignée par fast-forward sur ce staging.
+
+## 31 octobre 2026 — annulation et suivi, lot 5
+
+Migration 20261031000500_analysis_cancellation exécutée sur les deux bases.
+CANCELLED est distinct de FAILED. Annulation atomique d'un travail en attente ;
+drapeau d'arrêt sur RUNNING, heartbeat et publication SQL conditionnés à son
+absence, terminaison du thread attendue avant acquittement. Reprise des demandes
+abandonnées à expiration du bail, fencing des anciens workers, nettoyage des
+sources annulées par la maintenance. Les rapports déjà terminés restent inchangés.
+API propriétaire/CSRF, confirmation Vue au clavier, suivi différenciant demande
+et arrêt confirmé, dates réelles du heartbeat/deadline et compteur dédié.
+
+Vérifications terminées : typage, builds, lint, migrations ; première passe ciblée
+PostgreSQL de six tests réussie en 18 secondes, dont interruption d'un vrai thread
+et nettoyage. Un test frontend échouait car un beforeEach retournait implicitement
+une fonction mock, interprétée comme cleanup par Vitest ; retour supprimé. Suite
+frontend ensuite 104/104. pnpm check complet réussi avec 211 tests (28 analyzer,
+52 jobs, 27 API, 104 Vue), lint/types/builds/Prisma. Ajout d'une septième intégration
+répétant cinq fois la course réservation/annulation, puis lancement des suites
+complètes PostgreSQL et Chromium ; résultats définitifs à inscrire après exécution.
