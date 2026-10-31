@@ -41,6 +41,7 @@ export class RecoveryService {
       const consumed = await transaction.passwordResetToken.deleteMany({ where: { id: record.id, tokenHash: record.tokenHash, expiresAt: { gt: new Date() } } });
       if (!consumed.count) throw invalid();
       await transaction.user.update({ where: { id: record.userId }, data: { passwordHash } });
+      await transaction.apiKey.deleteMany({ where: { userId: record.userId } });
       await transaction.session.deleteMany({ where: { OR: [{ userId: record.userId }, ...(cookie ? [{ tokenHash: digest(cookie) }] : [])] } });
     });
     this.auth.clearCookie(response);

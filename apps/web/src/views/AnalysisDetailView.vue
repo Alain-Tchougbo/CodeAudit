@@ -10,6 +10,7 @@ import MetricCard from '../components/MetricCard.vue';
 import ResourceState from '../components/ResourceState.vue';
 import ReportExport from '../components/ReportExport.vue';
 import CancelAnalysis from '../components/CancelAnalysis.vue';
+import QualityGateResult from '../components/QualityGateResult.vue';
 import { date, duration, number } from '../format';
 const route = useRoute();
 const { data, loading, error, reload, now } = useAnalysisDetail(() => String(route.params.id));
@@ -219,6 +220,11 @@ const elapsed = computed(() => {
       </template>
       <ReportExport
         :key="data.analysis.id"
+        :analysis-id="data.analysis.id"
+        :status="data.analysis.status"
+      />
+      <QualityGateResult
+        :key="`gate-${data.analysis.id}`"
         :analysis-id="data.analysis.id"
         :status="data.analysis.status"
       />

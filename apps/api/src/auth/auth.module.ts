@@ -7,13 +7,17 @@ import { Public, type AuthRequest, type CookieResponse } from './auth.types';
 import { MailService } from './mail.service';
 import { RecoveryService } from './recovery.service';
 import { AccountController } from './account.controller';
+import { ApiKeyService } from './api-key.service';
+import { ApiKeyController } from './api-key.controller';
 @Injectable()
 class SessionGuard implements CanActivate {
-  constructor(private readonly auth: AuthService, private readonly reflector: Reflector) {}
+  constructor(private readonly auth: AuthService, private readonly reflector: Reflector, private readonly keys: ApiKeyService) {}
   async canActivate(context: ExecutionContext) {
     if (this.reflector.getAllAndOverride<boolean>('codeaudit.public', [context.getHandler(), context.getClass()])) return true;
     const request = context.switchToHttp().getRequest<AuthRequest>();
-    request.auth = await this.auth.authenticate(request, context.switchToHttp().getResponse<CookieResponse>());
+    request.auth = request.headers.authorization !== undefined
+      ? await this.keys.authenticate(request, this.reflector.getAllAndOverride<boolean>('codeaudit.api-key', [context.getHandler(), context.getClass()]) === true)
+      : await this.auth.authenticate(request, context.switchToHttp().getResponse<CookieResponse>());
     return true;
   }
 }
@@ -29,5 +33,5 @@ class AuthController {
   @Public() @Post('logout') @HttpCode(204)
   async logout(@Req() request: AuthRequest, @Res({ passthrough: true }) response: CookieResponse) { await this.auth.logout(request, response); }
 }
-@Module({ imports: [DatabaseModule], controllers: [AuthController, AccountController], providers: [AuthService, MailService, RecoveryService, { provide: APP_GUARD, useClass: SessionGuard }] })
+@Module({ imports: [DatabaseModule], controllers: [AuthController, AccountController, ApiKeyController], providers: [AuthService, ApiKeyService, MailService, RecoveryService, { provide: APP_GUARD, useClass: SessionGuard }] })
 export class AuthModule {}

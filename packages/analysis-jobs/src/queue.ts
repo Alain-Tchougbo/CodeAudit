@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, type PrismaClient } from '@codeaudit/database';
 import { ANALYSIS_PROFILE_VERSION, getAnalysisProfile, type AnalysisReport } from '@codeaudit/analyzer';
 import type { CodeContext, GitSource } from '@codeaudit/contracts';
+import { isQualityPolicy } from '@codeaudit/contracts';
 import { CONTEXT_LIMITS } from './code-context';
 import { EXECUTION_LIMITS, JobError } from './limits';
 import type { SourceStore } from './storage';
@@ -25,7 +26,10 @@ export class AnalysisQueue {
     return this.client.$transaction(async (transaction) => {
       const project = await transaction.project.findUniqueOrThrow({ where: { id: projectId } });
       getAnalysisProfile(project.analysisProfileVersion);
+      const policy: unknown = project.qualityPolicy;
+      if (policy !== null && !isQualityPolicy(policy)) throw new JobError('QUALITY_POLICY_INVALID', 'Les seuils enregistrés sur ce projet sont invalides.');
       return transaction.analysis.create({ data: {
+        qualityPolicySnapshot: policy ? { ...policy } : Prisma.DbNull,
         profileVersion: project.analysisProfileVersion,
         sourceMetadata: options.gitSource ? { ...options.gitSource } : Prisma.DbNull,
         projectId, sourceKey: sources.key, sourceDigest: sources.digest, captureContext: options.captureContext ?? false,

@@ -159,3 +159,16 @@ export interface GitSource {
   pullRequest: number | null;
 }
 export interface GitImportRequest { repository: string; ref?: string; pullRequest?: number; captureContext?: boolean }
+
+export interface QualityPolicy { schemaVersion: 1; enabled: boolean; maxErrors: number; maxWarnings: number }
+export interface QualityGate {
+  analysisId: string;
+  schemaVersion: 1;
+  status: 'PASS' | 'FAIL' | 'PENDING' | 'UNAVAILABLE' | 'NOT_CONFIGURED';
+  policy: QualityPolicy | null;
+  observed: { errorCount: number; warningCount: number } | null;
+  criteria: { metric: 'errorCount' | 'warningCount'; value: number; maximum: number; passed: boolean }[];
+}
+export interface ApiKeySummary { id: string; projectId: string; name: string; createdAt: string; expiresAt: string; lastUsedAt: string | null }
+export interface ApiKeyCreated { key: ApiKeySummary; token: string }
+export { isQualityPolicy, evaluateQualityGate } from './quality.js';

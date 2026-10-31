@@ -520,3 +520,42 @@ deux fichiers analysés par Essentiel, 45 erreurs et un avertissement calculés.
 Sources temporaires supprimées avec garde de chemin ; trace .tmp/github-live.log.
 Cela valide un dépôt public, pas une configuration OAuth privée ni un webhook.
 Les limites de globals de tests et du moteur syntaxique sont documentées.
+
+Résultats définitifs du lot 6 : 130/130 intégrations PostgreSQL réussies
+(381 secondes), CI verte. Le lancement local E2E s'est d'abord arrêté au build :
+Windows Code Integrity (3077/3033) a refusé le binaire natif Rollup. Le même build
+Vue a réussi à la relance, sans changement de protection, de binaire ou de
+dépendance ; pnpm exec playwright test a ensuite réussi 16/16 parcours (1,8 minute).
+PR 12 fusionnée par squash sur stagingb1408eb après nouveau contrôle pr-policy.
+Le blocage Windows ponctuel est un fait observé, pas une garantie de résolution
+permanente d'une politique système. Aucun contournement ou désactivation effectué.
+
+## 31 octobre 2026 — seuils qualité et intégration CI, lot 7
+
+Branche feat/quality-gates-ci depuis origin/staging. Migration
+20261031000700_quality_ci exécutée sur les deux bases : politique projet,
+snapshot par demande et clés personnelles limitées à un projet. Décision v1
+calculée sur les compteurs du rapport validé et les seuils figés ; aucune
+rétroapplication ni conversion de FAIL qualité en FAILED technique. Politique
+absente explicitement NOT_CONFIGURED. Formulaires, résultats et gestion des clés
+Vue avec confirmations clavier, affichage du secret une seule fois en mémoire.
+
+Secrets de 32 octets, seuls leurs SHA-256 stockés, expiration de 1 à 90 jours,
+révocation et suppression lors d'une récupération de compte. Bearer admis sur
+une liste restreinte d'endpoints d'analyse, scope projet et droits vérifiés.
+Les autres routes gardent cookie/CSRF ; mélanger les deux est refusé.
+CLI Node natif sans dépendance supplémentaire, secret en environnement,
+HTTPS hors loopback, redirections refusées, lectures bornées, délai et polling,
+export exact et décision séparée. Action composite GitHub avec entrées en env.
+
+Difficultés corrigées : validation explicite du JSON Prisma pour son typage,
+export du nouveau type ApiKey du package database, puis ref Vue pour le retour
+de focus. pnpm check réussi avec 244 tests (28 analyzer, 56 jobs, 48 API, 112 Vue),
+lint, types, builds et Prisma. Dix intégrations PostgreSQL ciblées réussies en
+44 secondes, dont trois vrais processus CLI et worker : sorties 0/1/2, fichiers
+identiques à l'API, scope, refus de capacités de session, expiration, révocation
+et récupération. Revue : UUID projet en majuscules accepté par le CLI et refus
+explicite d'analyses d'un autre projet du même compte ajoutés aux tests ; lint,
+typage outils/API finaux réussis après cette correction. Suites PostgreSQL et
+Chromium complètes en cours. Aucun runner externe ni déploiement public HTTPS
+configuré ou revendiqué. Aucune dépendance externe ajoutée.
