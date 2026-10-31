@@ -74,6 +74,7 @@ model Analysis {
   startedAt        DateTime?      @db.Timestamptz(3)
   finishedAt       DateTime?      @db.Timestamptz(3)
   heartbeatAt      DateTime?      @db.Timestamptz(3)
+  cancelRequestedAt DateTime?     @db.Timestamptz(3)
   leaseExpiresAt   DateTime?      @db.Timestamptz(3)
   deadlineAt       DateTime?      @db.Timestamptz(3)
   lockToken        String?        @unique @db.Uuid
@@ -101,4 +102,5 @@ enum AnalysisStatus {
   RUNNING
   SUCCEEDED
   FAILED
+  CANCELLED
 }

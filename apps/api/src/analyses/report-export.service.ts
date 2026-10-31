@@ -25,6 +25,7 @@ export class ReportExportService {
   }
 
   present(stored: Analysis): AnalysisExport {
+    if (stored.status === 'CANCELLED') throw new ConflictException({ code: 'ANALYSIS_CANCELLED', message: 'Cette analyse a été annulée et ne possède pas de rapport exportable.' });
     if (stored.status === 'QUEUED' || stored.status === 'RUNNING') {
       throw new ConflictException({ code: 'ANALYSIS_NOT_FINISHED', message: 'L’analyse n’est pas encore terminée. Réessayez après la fin du traitement.' });
     }

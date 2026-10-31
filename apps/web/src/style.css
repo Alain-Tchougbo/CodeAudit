@@ -55,6 +55,7 @@ h1,h2,h3 { text-wrap:balance; }
   .notice-success { background:#eef8f1; border-color:#c6e1cc; color:#20563d; }
   .notice-error { background:#fff4f1; border-color:#efcbc2; color:#9a2f29; }
   .notice-info { background:#edf4fa; border-color:#cfdfed; color:#2a5579; }
+  .notice-warning { background:var(--warning-soft); border-color:#ead7ab; color:var(--warning); }
   .metrics-strip { @apply grid grid-cols-2 overflow-hidden bg-white lg:grid-cols-4; border:1px solid var(--line); border-radius:var(--radius); }
   .metric { @apply min-w-0 p-5 sm:p-6; border-right:1px solid var(--line); }
   .metric:last-child { border-right:0; }

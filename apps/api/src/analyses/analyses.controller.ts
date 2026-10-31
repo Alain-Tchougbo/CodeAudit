@@ -12,6 +12,10 @@ import { AnalysisOptions } from './analysis-options.dto';
 export class AnalysesController {
   constructor(private readonly analyses: AnalysesService, private readonly exports: ReportExportService, private readonly comparisons: ComparisonService) {}
 
+  @Post('analyses/:id/cancel')
+  @HttpCode(202)
+  cancel(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() userId: string) { return this.analyses.cancel(id, userId); }
+
   @Get('analyses/:id/comparison')
   comparison(@Param('id', ParseUUIDPipe) id: string, @Query() query: ComparisonQuery, @CurrentUser() userId: string) {
     return this.comparisons.compare(id, query.baselineId, userId);

@@ -111,7 +111,7 @@ Voir [les interfaces de consultation](consultation.md).
 
 ## File, concurrence et interruption
 
-États : `QUEUED → RUNNING → SUCCEEDED | FAILED`.
+États : `QUEUED → RUNNING → SUCCEEDED | FAILED`, ou `CANCELLED` sur demande.
 Des diagnostics ESLint, y compris erreurs de syntaxe, donnent SUCCEEDED lorsque
 le moteur a produit un rapport. FAILED signifie un échec technique.
 
@@ -126,7 +126,7 @@ uniquement si le jeton, l'état et les échéances sont encore valides.
 
 Un ancien worker ne peut ni renouveler un bail expiré ni publier tardivement.
 Au démarrage puis entre les travaux, avec un intervalle minimal de 5 secondes,
-les RUNNING expirés deviennent FAILED
+les RUNNING expirés deviennent FAILED (CANCELLED si une annulation était demandée)
 avec WORKER_INTERRUPTED ou ANALYSIS_TIMEOUT. Ils ne sont jamais remis en QUEUED :
 un même identifiant n'est donc jamais exécuté par deux workers, même si le premier
 processus reprend après une pause. Les QUEUED persistés sont traités au redémarrage.

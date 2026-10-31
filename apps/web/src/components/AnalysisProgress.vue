@@ -4,7 +4,7 @@ import type { AnalysisStatus } from '@codeaudit/contracts';
 import AppIcon from './AppIcon.vue';
 const props = defineProps<{ status: AnalysisStatus }>();
 const stage = computed(() => props.status === 'QUEUED' ? 0 : props.status === 'SUCCEEDED' ? 2 : 1);
-const steps = computed(() => ['Mise en file', props.status === 'FAILED' ? 'Traitement en échec' : 'Traitement', 'Rapport']);
+const steps = computed(() => props.status === 'CANCELLED' ? ['Demande enregistrée', 'Annulation confirmée', 'Sans rapport'] : ['Mise en file', props.status === 'FAILED' ? 'Traitement en échec' : 'Traitement', 'Rapport']);
 </script>
 <template>
   <ol
@@ -24,6 +24,10 @@ const steps = computed(() => ['Mise en file', props.status === 'FAILED' ? 'Trait
       ><AppIcon
         v-if="index < stage || (index === stage && status === 'SUCCEEDED')"
         name="check"
+        :size="12"
+      /><AppIcon
+        v-else-if="index === stage && status === 'CANCELLED'"
+        name="cancel"
         :size="12"
       /><AppIcon
         v-else-if="index === stage && status === 'FAILED'"

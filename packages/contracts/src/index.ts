@@ -39,9 +39,12 @@ export interface ApiError {
   requestId: string;
 }
 
-export type AnalysisStatus = 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+export type AnalysisStatus = 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
 
 export interface AnalysisSummary {
+  cancelRequestedAt?: string | null;
+  heartbeatAt?: string | null;
+  deadlineAt?: string | null;
   id: string;
   projectId: string;
   status: AnalysisStatus;
@@ -133,6 +136,7 @@ export interface CodeContext {
 export interface AnalysisCodeContext { requested: boolean; context: CodeContext | null }
 
 export interface Dashboard {
+  cancelledCount: number;
   projectCount: number;
   analysisCount: number;
   completedCount: number;

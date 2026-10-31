@@ -8,6 +8,7 @@ import { PrismaService } from '../database/prisma.service';
 import type { HistoryQuery } from './history.dto';
 
 export const SUMMARY_SELECT = {
+  cancelRequestedAt: true, heartbeatAt: true, deadlineAt: true,
   id: true, projectId: true, status: true, createdAt: true, startedAt: true, finishedAt: true,
   profileVersion: true, errorCode: true, errorMessage: true, statistics: true, projectSnapshot: true,
   sourceMetadata: true,
@@ -16,6 +17,9 @@ export const SUMMARY_SELECT = {
 export function summary(record: Pick<Analysis, keyof typeof SUMMARY_SELECT>): AnalysisSummary {
   const statistics = record.statistics as Record<string, number> | null;
   return {
+    cancelRequestedAt: record.cancelRequestedAt?.toISOString() ?? null,
+    heartbeatAt: record.heartbeatAt?.toISOString() ?? null,
+    deadlineAt: record.deadlineAt?.toISOString() ?? null,
     id: record.id, projectId: record.projectId, status: record.status,
     createdAt: record.createdAt.toISOString(),
     startedAt: record.startedAt?.toISOString() ?? null,
@@ -38,6 +42,20 @@ export function summary(record: Pick<Analysis, keyof typeof SUMMARY_SELECT>): An
 export class AnalysesService {
   private activeImports = 0;
   constructor(private readonly database: PrismaService) {}
+
+  async cancel(id: string, ownerId: string): Promise<AnalysisSummary> {
+    const scope = { id, project: { ownerId } };
+    const now = new Date();
+    const queued = await this.database.client.analysis.updateMany({ where: { ...scope, status: 'QUEUED' },
+      data: { status: 'CANCELLED', cancelRequestedAt: now, finishedAt: now } });
+    if (!queued.count) await this.database.client.analysis.updateMany({ where: { ...scope, status: 'RUNNING', cancelRequestedAt: null }, data: { cancelRequestedAt: now } });
+    const record = await this.database.client.analysis.findUnique({ where: scope, select: SUMMARY_SELECT });
+    if (!record) throw new NotFoundException({ code: 'ANALYSIS_NOT_FOUND', message: 'Analyse introuvable.' });
+    if (record.status !== 'CANCELLED' && !(record.status === 'RUNNING' && record.cancelRequestedAt)) {
+      throw new ConflictException({ code: 'ANALYSIS_ALREADY_FINISHED', message: 'Cette analyse est déjà terminée et ne peut plus être annulée.' });
+    }
+    return summary(record);
+  }
 
   async create(projectId: string, archive: Buffer | undefined, ownerId: string, options: { captureContext?: boolean; gitSource?: GitSource; stripSingleRoot?: boolean } = {}): Promise<AnalysisSummary> {
     if (!await this.database.client.project.findUnique({ where: { id: projectId, ownerId }, select: { id: true } })) {

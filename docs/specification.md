@@ -43,7 +43,8 @@ Les diagnostics sont inclus dans le rapport JSONB de l'analyse : chemin relatif,
 ligne et colonne facultatives, règle nullable, gravité, message et erreur de parsing.
 Les nouvelles tentatives ont des identifiants distincts, sans lien dédié en MVP.
 
-États : QUEUED → RUNNING → SUCCEEDED ou FAILED.
+États : QUEUED → RUNNING → SUCCEEDED ou FAILED ; QUEUED/RUNNING peuvent aussi
+aboutir à CANCELLED sur demande explicite du propriétaire.
 Une analyse terminée avec des problèmes de code est SUCCEEDED.
 Une erreur de syntaxe est un diagnostic ; un délai dépassé ou un crash est un échec technique.
 Une nouvelle tentative produit une nouvelle analyse ; les résultats terminaux sont immuables.
@@ -52,7 +53,8 @@ Aucun fichier pris en charge : rejet avant création d'un travail exécutable.
 
 La file utilise une réservation atomique PostgreSQL, une durée de réservation,
 un heartbeat et un jeton de propriété. Un worker ayant perdu sa réservation ne peut
-plus finaliser le rapport. Une réservation expirée devient FAILED avec un code explicite ;
+plus finaliser le rapport. Une réservation expirée devient FAILED avec un code explicite
+(CANCELLED si une annulation était demandée) ;
 la reprise utilisateur crée une nouvelle tentative. Pas de relance automatique en MVP.
 La concurrence initiale est de 1.
 La file et ces garanties sont implémentées et testées avec PostgreSQL réel.
