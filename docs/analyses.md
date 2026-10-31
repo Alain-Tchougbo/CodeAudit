@@ -1,5 +1,35 @@
 # Exécution des analyses
 
+## Comparaison des rapports enregistrés
+
+GET /api/analyses/:targetId/comparison?baselineId=UUID exige une session. Les deux
+analyses sont recherchées avec le propriétaire connecté avant tout autre contrôle.
+Une ressource absente ou étrangère renvoie 404. Identifiants invalides, analyses
+identiques ou projets différents donnent 400 ; analyses non réussies, rapports
+invalides/incohérents ou configurations différentes donnent 409.
+
+La réponse schemaVersion=1 et matchingVersion=file-rule-message-v1 comprend les
+références des deux analyses, diagnostics ajoutés/résolus/persistants, positions
+avant/après, compteurs et écarts cible moins référence. Les ensembles de fichiers
+nouvellement analysés et plus analysés expliquent les changements de couverture.
+Le calcul ne relance pas le moteur, n'écrit rien en base et n'utilise pas de sources.
+Les exports d'origine restent inchangés. Aucune migration n'est nécessaire.
+
+Le même profil complet (versions des moteurs comprises) et les mêmes limites
+sont exigés. Le rapprochement utilise fichier/règle/type/gravité/message. Il conserve
+la multiplicité, apparie d'abord les positions de début exactes, puis les occurrences
+restantes ordonnées par ligne/colonne. Il tolère les décalages de lignes, sans suivre
+les renommages. Un changement de message, règle, type ou gravité apparaît comme
+une disparition et un ajout. Les correspondances entre occurrences identiques
+restent heuristiques, sans preuve d'identité du code.
+
+« Résolu » signifie absent du rapport cible : une suppression ou exclusion de fichier
+peut aussi produire ce résultat. Les positions des résolus viennent de la référence,
+celles des nouveaux/persistants de la cible. Les diagnostics complets sont renvoyés
+et filtrés/paginés dans le navigateur, comme les résultats actuels ; une pagination
+serveur reste une évolution pour les gros rapports. Les limites de taille des rapports
+de chaque analyse s'appliquent toujours.
+
 L'API importe un ZIP, valide et extrait ses sources avant de créer un travail
 QUEUED dans PostgreSQL. Le worker est un processus indépendant. Les règles et le
 moteur restent dans `packages/analyzer`, sans dépendance envers la file ni Prisma.

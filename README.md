@@ -86,6 +86,13 @@ fiches sur téléphone et confirmations utilisables au clavier. Les captures des
 tests d'interface sont jointes au rapport Playwright (`pnpm exec playwright show-report`)
 et aux artefacts de la CI. Elles utilisent les réponses réelles de l'API de test.
 
+Depuis l'historique d'un projet, cocher deux analyses réussies puis cliquer sur
+« Comparer les analyses ». La plus ancienne sert de référence par défaut ; le sens
+peut être inversé. La comparaison distingue diagnostics nouveaux, persistants et
+résolus, avec les filtres habituels. « Résolu » signifie absent du rapport cible,
+pas nécessairement corrigé. Les rapports doivent avoir les mêmes profils, moteurs
+et limites. La sélection peut traverser plusieurs pages d'historique.
+
 Pour préparer un petit ZIP depuis PowerShell, créer un dossier contenant un fichier
 `index.js` avec `missing;` et `console.log('demo');`, puis utiliser
 `Compress-Archive -Path chemin/du/dossier/* -DestinationPath demo.zip`.

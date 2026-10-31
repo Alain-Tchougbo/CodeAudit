@@ -323,3 +323,39 @@ et appareils tactiles physiques restent à contrôler. Les contrastes ciblés et
 tests clavier ne constituent pas un audit exhaustif WCAG. Les avertissements
 Node VM Modules/couleurs restent présents sans échec des passes réussies.
 Traces locales dans .tmp/redesign-*.log ; captures et rapports sont ignorés par Git.
+
+## 31 octobre 2026 — huit évolutions approuvées et comparaison
+
+L'utilisateur a confirmé l'enchaînement de huit lots distincts : comparaison,
+aperçu du code, récupération du mot de passe et sessions, profils contrôlés,
+annulation/suivi, import Git/pull requests, seuils qualité/CI, collaboration.
+Chaque lot suit une branche et une PR vers staging, avec vérifications avant fusion.
+Les lots autres que la comparaison ne sont pas décrits comme livrés à cette étape.
+
+Lot comparaison, branche feat/analysis-comparison : endpoint authentifié de lecture,
+sélection de deux analyses réussies dans l'historique sur plusieurs pages, page Vue
+avec compteurs, écarts, couverture de fichiers, sens inversable et filtres existants.
+Le calcul s'appuie exclusivement sur les rapports persistés, sans migration ou
+réexécution du moteur. Les exports historiques restent identiques.
+
+Le matching versionné conserve les occurrences multiples, privilégie les positions
+exactes puis tolère les décalages de lignes dans chaque identité fichier/règle/
+type/gravité/message. Les mêmes profils complets, moteurs et limites sont exigés.
+L'interface précise qu'un diagnostic absent peut aussi provenir d'un fichier retiré
+ou ignoré ; il ne s'agit pas d'une preuve de correction.
+
+Vérifications locales réellement exécutées : pnpm check réussi (lint, typage,
+builds, validation Prisma et 172 tests, dont 24 API et 85 frontend), 97 intégrations
+sur PostgreSQL dédié codeaudit_comparison_test réussies et 10 parcours Chromium
+réussis. Le nouveau parcours utilise ZIP, worker et deux rapports réels, sélection,
+filtres, inversion, rechargement, erreurs 404 et exports inchangés, sur des largeurs
+320/390/768/1440. Les intégrations refusent les comptes/projets étrangers, états
+non réussis, profils/moteurs/limites différents, rapports malformés ou incohérents.
+
+Difficulté corrigée : une fixture typée AnalysisReport n'était pas assignable au
+type JSON Prisma ; l'altération de test passe désormais par une requête SQL
+paramétrée sérialisant ce rapport, sans contourner le typage par any. Les contrôles
+réussis ci-dessus ont suivi cette correction. Les traces sont dans .tmp/comparison-*.log.
+Les correspondances restent heuristiques pour occurrences identiques et renommages ;
+la pagination est côté navigateur. Les autres navigateurs/lecteurs d'écran restent
+hors des vérifications exécutées.
