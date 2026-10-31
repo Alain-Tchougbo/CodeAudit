@@ -16,7 +16,8 @@ Les erreurs de téléchargement restent affichées et permettent de réessayer.
 
 ```powershell
 $analysisId = 'REMPLACER_PAR_UUID_ANALYSE'
-curl.exe --fail-with-body -o rapport.json "http://127.0.0.1:3000/api/analyses/$analysisId/report"
+# $http est la session obtenue dans docs/authentication.md
+Invoke-WebRequest -UseBasicParsing -WebSession $http -OutFile rapport.json "http://127.0.0.1:3000/api/analyses/$analysisId/report"
 ```
 
 `GET /api/analyses/:id/report` retourne `application/json`, `Cache-Control: no-store`

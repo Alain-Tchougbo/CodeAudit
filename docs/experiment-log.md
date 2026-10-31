@@ -187,3 +187,75 @@ Les preuves locales détaillées restent dans `.tmp/demo-*.log` et
 `playwright-report/`, ignorés par Git. Les résultats CI sont attachés à la PR de
 la branche fix/demo-readiness ; ce journal ne transforme pas les vérifications
 locales en déclaration de préparation à la production.
+
+## 31 octobre 2026 — authentification et isolation des comptes
+
+Avant modification, lecture des modèles Prisma, des contrôleurs, des clients Vue,
+des tests et du workflow Git. Stratégie présentée : sessions opaques PostgreSQL,
+cookie HttpOnly, hachage scrypt, contrôle global des endpoints et propriétaire
+obligatoire dans les requêtes métier. Le comptage initial des projets de la base
+locale était nul. Les anciens projets éventuels restent conservés avec ownerId
+NULL, invisibles aux comptes ; aucun premier inscrit ne les récupère implicitement.
+
+Implémentation sur feat/session-authentication : tables User, Session et AuthThrottle,
+relation Project.ownerId, migration SQL, inscription/connexion/profil/déconnexion,
+expiration absolue et par inactivité, quotas persistants, protection CSRF et origine.
+Le cookie de production est Secure et préfixé __Host ; les secrets de session et
+les mots de passe ne sont pas renvoyés dans le profil. Le frontend restaure la
+session via /api/auth/me, protège les routes, gère les 401 et ne stocke aucun
+jeton d'authentification dans localStorage ou sessionStorage.
+
+La migration a été exécutée sur la base locale et sur une base PostgreSQL de test
+dédiée codeaudit_auth_test, dans un projet Docker Compose isolé. L'ancien serveur
+de démonstration a été arrêté avant cette modification. Aucun compte de démonstration
+ni mot de passe par défaut n'a été ajouté.
+
+### Vérifications réellement exécutées
+
+- Installation pnpm avec lockfile figé : réussie.
+- Génération Prisma et migration deploy : réussies sur les deux bases.
+- pnpm db:check : aucune différence entre le schéma et les bases locale/de test.
+- pnpm check : lint sans avertissement, typage, builds et validation Prisma réussis ;
+  144 tests réussis (24 analyzer, 39 analysis-jobs, 12 API, 69 frontend).
+- Tests d'intégration API sur PostgreSQL réel : 84 réussis, dont 26 cas auth.
+  Deux comptes échangent leurs identifiants de projets et d'analyses dans les
+  requêtes HTTP : lecture, modification, suppression, import, historique, résultats,
+  rapports et indicateurs sont contrôlés. Les ressources étrangères répondent 404.
+- Tests Playwright Chromium : 8 réussis, dont 3 nouveaux scénarios auth ; inscription
+  mobile, profil, rechargement, connexion/déconnexion, rejet du cookie révoqué,
+  expiration réelle en base et accès étranger refusé. Le parcours ZIP/analyse/
+  filtres/historique/export existant fonctionne avec un compte authentifié.
+- docker compose config --quiet et git diff --check : réussis.
+- pnpm audit --prod : aucune vulnérabilité signalée après correction de minimatch.
+  pnpm audit complet : 1 alerte faible deepmerge et 1 modérée glob, dans l'outillage
+  de développement ; la commande complète ne passe donc pas sans alerte.
+
+### Difficultés et corrections observées
+
+La première passe frontend a échoué sur quatre assertions des anciens clients HTTP :
+elles attendaient des objets d'en-têtes sans les nouveaux marqueurs CSRF/cookies.
+Les assertions vérifient désormais les vrais Headers et credentials, tout en
+préservant l'absence de Content-Type forcé pour les imports multipart. Les passes
+suivantes ont réussi. Une passe globale a aussi signalé le formatage Vue du profil ;
+il a été corrigé puis le contrôle global entièrement relancé.
+
+Une réponse 401 ancienne pouvait effacer l'état d'une session ouverte entre-temps.
+Le client compare maintenant une génération de session ; un test frontend couvre
+ce cas. L'audit a révélé une nouvelle alerte minimatch : passage à la version
+11.0.1 corrigée, mise à jour du lockfile, puis nouvelle passe complète check,
+intégration et navigateur avec succès. Les deux alertes de développement restantes
+sont documentées ; glob nécessite une migration majeure de l'outillage à valider.
+
+Les avertissements Node VM Modules/couleurs et l'affichage NativeCommandError par
+les redirections PowerShell restent présents. Les résultats ci-dessus se fondent
+sur les résumés des tests et les codes de sortie, pas sur ces lignes de progression.
+Les traces locales sont dans .tmp/auth-*.log et les rapports Playwright ignorés par Git.
+
+### Limites
+
+Les attributs Secure/__Host sont vérifiés via les réponses HTTP de test ; aucun
+déploiement HTTPS réel ni pentest n'a été réalisé. Réinitialisation du mot de passe,
+validation d'adresse, MFA et gestion des appareils ne sont pas implémentées.
+L'affectation de projets anciens à un compte doit être une opération administrateur
+explicite. Les limites système/worker et les quotas publics restent à revoir avant
+production. Ces vérifications ne constituent pas une garantie générale de sécurité.

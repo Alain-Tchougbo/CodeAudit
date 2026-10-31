@@ -31,14 +31,16 @@ Ce n'est pas un déploiement distribué sur plusieurs machines.
 | GET | `/api/analyses/:id/results` | Rapport JSON complet, uniquement après SUCCEEDED ; sinon 409 |
 
 Exemple avec un projet déjà créé, depuis PowerShell :
+se connecter d'abord selon [le guide d'authentification](authentication.md) pour
+obtenir `$http`, `$cookieHeader` et `$csrfToken`. Un appel anonyme retourne 401.
 
 ```powershell
 $projectId = 'REMPLACER_PAR_UUID_PROJET'
-$queued = curl.exe --fail-with-body -s -F 'archive=@C:/sources/projet.zip' "http://127.0.0.1:3000/api/projects/$projectId/analyses" | ConvertFrom-Json
-Invoke-RestMethod "http://127.0.0.1:3000/api/analyses/$($queued.id)"
-Invoke-RestMethod "http://127.0.0.1:3000/api/projects/$projectId/analyses"
+$queued = curl.exe --fail-with-body -s -H "Cookie: $cookieHeader" -H 'X-CodeAudit-Request: 1' -H "X-CSRF-Token: $csrfToken" -F 'archive=@C:/sources/projet.zip' "http://127.0.0.1:3000/api/projects/$projectId/analyses" | ConvertFrom-Json
+Invoke-RestMethod "http://127.0.0.1:3000/api/analyses/$($queued.id)" -WebSession $http
+Invoke-RestMethod "http://127.0.0.1:3000/api/projects/$projectId/analyses" -WebSession $http
 # Après passage à SUCCEEDED :
-curl.exe --fail-with-body -o rapport.json "http://127.0.0.1:3000/api/analyses/$($queued.id)/results"
+Invoke-WebRequest -UseBasicParsing -WebSession $http -OutFile rapport.json "http://127.0.0.1:3000/api/analyses/$($queued.id)/results"
 ```
 
 Les UUID invalides, archives absentes ou dangereuses sont rejetés ; ressource

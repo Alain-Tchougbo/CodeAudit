@@ -15,8 +15,8 @@ export const validateReportExport = validator.compile<AnalysisExport>(schema);
 export class ReportExportService {
   constructor(private readonly analyses: AnalysesService) {}
 
-  async export(id: string): Promise<AnalysisExport> {
-    const stored = await this.analyses.get(id);
+  async export(id: string, ownerId: string): Promise<AnalysisExport> {
+    const stored = await this.analyses.get(id, ownerId);
     if (stored.status === 'QUEUED' || stored.status === 'RUNNING') {
       throw new ConflictException({ code: 'ANALYSIS_NOT_FINISHED', message: 'L’analyse n’est pas encore terminée. Réessayez après la fin du traitement.' });
     }

@@ -1,0 +1,30 @@
+import { Controller, Get, Post, Body, Req, Res, HttpCode, Injectable, Module, type CanActivate, type ExecutionContext } from '@nestjs/common';
+import { APP_GUARD, Reflector } from '@nestjs/core';
+import { DatabaseModule } from '../database/database.module';
+import { AuthService } from './auth.service';
+import { LoginDto, RegisterDto } from './auth.dto';
+import { Public, type AuthRequest, type CookieResponse } from './auth.types';
+@Injectable()
+class SessionGuard implements CanActivate {
+  constructor(private readonly auth: AuthService, private readonly reflector: Reflector) {}
+  async canActivate(context: ExecutionContext) {
+    if (this.reflector.getAllAndOverride<boolean>('codeaudit.public', [context.getHandler(), context.getClass()])) return true;
+    const request = context.switchToHttp().getRequest<AuthRequest>();
+    request.auth = await this.auth.authenticate(request, context.switchToHttp().getResponse<CookieResponse>());
+    return true;
+  }
+}
+@Controller('auth')
+class AuthController {
+  constructor(private readonly auth: AuthService) {}
+  @Public() @Post('register')
+  register(@Body() input: RegisterDto, @Req() request: AuthRequest, @Res({ passthrough: true }) response: CookieResponse) { return this.auth.register(input, request, response); }
+  @Public() @Post('login') @HttpCode(200)
+  login(@Body() input: LoginDto, @Req() request: AuthRequest, @Res({ passthrough: true }) response: CookieResponse) { return this.auth.login(input, request, response); }
+  @Get('me')
+  me(@Req() request: AuthRequest) { return request.auth; }
+  @Public() @Post('logout') @HttpCode(204)
+  async logout(@Req() request: AuthRequest, @Res({ passthrough: true }) response: CookieResponse) { await this.auth.logout(request, response); }
+}
+@Module({ imports: [DatabaseModule], controllers: [AuthController], providers: [AuthService, { provide: APP_GUARD, useClass: SessionGuard }] })
+export class AuthModule {}

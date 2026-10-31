@@ -7,7 +7,8 @@ describe('Client HTTP analyses', () => {
     const file = new File(['ZIP'], 'project.zip', { type: 'application/zip' });
     expect(await analysesApi.create('p/q', file)).toEqual({ id: 'queued' });
     const [path, options] = fetch.mock.calls[0]!; expect(path).toBe('/api/projects/p%2Fq/analyses');
-    expect(options.method).toBe('POST'); expect(options.body.get('archive')).toEqual(file); expect(options.headers).toBeUndefined();
+    expect(options.method).toBe('POST'); expect(options.body.get('archive')).toEqual(file); expect(options.headers.has('Content-Type')).toBe(false);
+    expect(options.headers.get('X-CodeAudit-Request')).toBe('1');
   });
   it('recupere le fichier JSON brut depuis le veritable endpoint export', async () => {
     const content = '{ "schemaVersion": 1, "report": { "issues": [] } }';
@@ -20,14 +21,14 @@ describe('Client HTTP analyses', () => {
       reader.readAsText(blob);
     });
     expect(text).toBe(content);
-    expect(fetch).toHaveBeenCalledWith('/api/analyses/a%2Fb/report', { signal });
+    expect(fetch).toHaveBeenCalledWith('/api/analyses/a%2Fb/report', expect.objectContaining({ signal, credentials: 'same-origin' }));
   });
   it('utilise les endpoints réels et transmet les signaux et curseurs', async () => {
     const fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response('{}'))); vi.stubGlobal('fetch', fetch);
     const signal = new AbortController().signal;
     await analysesApi.dashboard(signal); await analysesApi.get('a/b', signal); await analysesApi.results('a/b', signal); await analysesApi.history('p/q', 'a+b', signal);
     expect(fetch.mock.calls.map(([path]) => path)).toEqual(['/api/dashboard', '/api/analyses/a%2Fb', '/api/analyses/a%2Fb/results', '/api/projects/p%2Fq/analyses?limit=20&cursor=a%2Bb']);
-    expect(fetch).toHaveBeenLastCalledWith(expect.any(String), { signal });
+    expect(fetch).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ signal, credentials: 'same-origin' }));
   });
   it('propage une erreur serveur structurée', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"message":"Analyse introuvable."}', { status: 404 })));
