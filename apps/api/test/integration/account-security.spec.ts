@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
-import type { PrismaClient } from '@codeaudit/database';
+import { Prisma, type PrismaClient } from '@codeaudit/database';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/configure-app';
@@ -158,7 +158,16 @@ describe('Comptes et sécurité — PostgreSQL et SMTP réels', () => {
   it('deux suppressions concurrentes ne laissent pas une équipe partagée sans administrateur', async () => {
     const team = await client.team.create({ data: { name: 'Race team', createdById: owner.userId, members: { create: [{ userId: owner.userId, role: 'ADMIN' }, { userId: other.userId, role: 'ADMIN' }] } } });
     const project = await client.project.create({ data: { ownerId: null, teamId: team.id, name: 'Retained race' } });
-    const responses = await Promise.all([owner.api.delete('/api/auth/account').send({ currentPassword: password, confirmation: 'SUPPRIMER' }), other.api.delete('/api/auth/account').send({ currentPassword: password, confirmation: 'SUPPRIMER' })]); expect(responses.map(value => value.status).sort()).toEqual([204, 409]); expect(await client.teamMember.count({ where: { teamId: team.id, role: 'ADMIN' } })).toBe(1); await client.project.delete({ where: { id: project.id } });
+    let release!: () => void; let locked!: () => void; const gate = new Promise<void>(resolveGate => { release = resolveGate; }); const ready = new Promise<void>(resolveReady => { locked = resolveReady; });
+    const barrier = client.$transaction(async transaction => { await transaction.$queryRaw(Prisma.sql`SELECT id FROM "User" WHERE id IN (${owner.userId}::uuid,${other.userId}::uuid) FOR UPDATE`); locked(); await gate; }, { timeout: 15000 });
+    await ready;
+    const requests = [owner.api.delete('/api/auth/account').send({ currentPassword: password, confirmation: 'SUPPRIMER' }), other.api.delete('/api/auth/account').send({ currentPassword: password, confirmation: 'SUPPRIMER' })].map(value => value.then(response => response));
+    try {
+      const deadline = Date.now() + 5000; let waiting = 0;
+      while (waiting < 2 && Date.now() < deadline) { const [row] = await client.$queryRaw<{ count: number }[]>(Prisma.sql`SELECT count(*)::integer AS count FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%DELETE FROM%User%'`); waiting = row?.count ?? 0; if (waiting < 2) await new Promise(resolveDelay => setTimeout(resolveDelay, 25)); }
+      expect(waiting).toBe(2);
+    } finally { release(); await barrier; }
+    const responses = await Promise.all(requests); expect(responses.map(value => value.status).sort()).toEqual([204, 409]); expect(await client.teamMember.count({ where: { teamId: team.id, role: 'ADMIN' } })).toBe(1); await client.project.delete({ where: { id: project.id } });
   });
   async function external(provider: 'GITHUB' | 'GITLAB', subject = '123456') {
     await verified(); const identity = jest.spyOn(app.get(OAuthService), 'identity').mockResolvedValue({ subject, login: `controlled-${provider}` });

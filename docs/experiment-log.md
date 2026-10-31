@@ -743,3 +743,23 @@ le code natif -1073740791, entraînant l'arrêt du lanceur parallèle. Le build 
 a réussi à nouveau ; API et worker compilés et Vite preview ont été relancés
 séparément puis vérifiés en HTTP et Chromium. Ce fait est également consigné dans
 la PR 14 ; la cause native n'est pas établie. Aucune protection système modifiée.
+
+Régression suivante : 21/21 parcours Chromium réussis en 3 minutes après précision
+du sélecteur h1 « Mon profil ». Les nouveaux quotas sont nettoyés avant/après les
+scénarios uniquement dans la base dédiée _test. Une configuration 2FA non confirmée
+est désormais supprimée lors de rotation des accès/déconnexion globale, avec un
+test empêchant sa confirmation ultérieure. Un contrôle PostgreSQL du volume JSON
+des rapports et du nombre d'événements précède le chargement de l'export en mémoire.
+
+La suite élargie a ensuite montré 34 succès et un échec réel : deux suppressions
+concurrentes gardaient un administrateur mais une requête renvoyait parfois 500.
+Reproduction déterministe par verrous sur les deux lignes User, attente de deux
+DELETE dans pg_stat_activity, puis libération : la forme brute DriverAdapterError
+était transmise au commit. Inspection du code installé adapter-pg 7.10.1 : SQLSTATE
+40001/40P01 est représenté par cause.kind=TransactionWriteConflict et pas toujours
+par Prisma P2034. Le filtre d'erreurs reconnaît désormais les deux formes et répond
+409 sans détails internes. Aucun élargissement du catch à toutes les erreurs SQL.
+Test réel avec barrière PostgreSQL réussi après correction ; instrumentation de
+diagnostic retirée, tests de discrimination positifs/négatifs ajoutés. Tests API
+relancés : 73/73, typage API réussi. Régression PostgreSQL complète reprise dans
+des processus séparés, avec désormais 35 tests ciblés de comptes et sécurité.

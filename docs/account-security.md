@@ -78,7 +78,9 @@ Le calcul suit [RFC 6238](https://www.rfc-editor.org/rfc/rfc6238) et ses vecteur
 SHA-1 sont testés. Les secrets sont chiffrés par AES-256-GCM avec un contexte
 lié au compte. La clé de configuration expire après dix minutes ; l'activation
 exige un premier code valide et renouvelle la session courante en révoquant les
-autres sessions et clés CI.
+autres sessions et clés CI. Un enrôlement non confirmé est invalidé lors d'un
+changement/réinitialisation du mot de passe ou d'une déconnexion globale ; il faut
+alors recommencer sa configuration.
 
 Dix codes de secours de 128 bits sont affichés une fois, conservés seulement en
 mémoire dans l'écran, et stockés sous forme de condensats liés au compte.
