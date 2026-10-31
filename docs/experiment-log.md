@@ -259,3 +259,67 @@ validation d'adresse, MFA et gestion des appareils ne sont pas implémentées.
 L'affectation de projets anciens à un compte doit être une opération administrateur
 explicite. Les limites système/worker et les quotas publics restent à revoir avant
 production. Ces vérifications ne constituent pas une garantie générale de sécurité.
+
+## 31 octobre 2026 — refonte visuelle du frontend
+
+Audit des huit vues Vue, des composants, des routes et des interactions : styles
+des projets différents de ceux des analyses, hiérarchie irrégulière, actions et
+espacements disparates, absence de recherche de projets, tableau de diagnostics
+trop large sur téléphone et métadonnées d'analyse trop volumineuses sur mobile.
+
+Direction retenue et implémentée sur feat/interface-redesign : « atelier de code »,
+navigation vert profond, surfaces claires légèrement chaudes, accents menthe,
+typographie système locale et monospace. Variables réutilisables dans style.css,
+icônes SVG locales AppIcon et composants EmptyState/AnalysisProgress ; aucune
+dépendance supplémentaire, police distante, image décorative ou donnée fictive
+introduite dans les écrans. Les fixtures restent dans les tests et bases dédiées.
+
+Les huit vues ont été reprises : connexion/inscription, tableau de bord, liste,
+création, modification et détail de projet, détail d'analyse et profil. Les parcours
+gardent les appels API existants et les contrôles d'authentification. Recherche
+locale dans les projets reçus, indicateurs regroupés, historique en lignes,
+diagnostics en tableau sur ordinateur et fiches sur téléphone. La durée et l'état
+restent visibles ; identifiant technique et provenance se consultent dans un volet
+natif details. Aucun pourcentage d'avancement ou score qualité n'est inventé.
+
+Accessibilité : labels de champs, affichage/masquage du mot de passe, lien
+d'évitement, titres de document, focus après navigation, confirmation de suppression
+avec focus initial sur Annuler, Échap et restitution du focus, états textuels et
+icônes associés aux couleurs, mouvement réduit et transitions discrètes.
+
+Vérifications locales réellement exécutées :
+
+- Installation pnpm figée réussie, sans modification des dépendances ou du lockfile.
+- pnpm check réussi : lint, TypeScript, builds, schéma Prisma et 152 tests
+  (24 analyzer, 39 analysis-jobs, 12 API, 77 frontend).
+- Après les derniers ajustements visuels, typage Vue, build Vite et les 77 tests
+  frontend relancés avec succès ; ESLint a aussi été relancé sans erreur.
+- Deux passes Playwright complètes réussies : 9 scénarios chacune, avec API,
+  PostgreSQL et worker réels dans l'environnement dédié codeaudit_ui_test.
+  Le parcours import/analyse/diagnostics/historique/export, l'authentification,
+  la recherche de projets et la confirmation au clavier ont été exercés.
+- Tests d'intégration API sur PostgreSQL réel : 84 réussis, dont l'isolation des
+  comptes, les sessions, les imports et l'exécution des analyses.
+- Une passe ciblée interface a aussi réussi après ajout du contrôle ordinateur.
+  Les scénarios vérifient l'absence de débordement horizontal à 320/390/768/1440 pixels,
+  le mouvement réduit et des contrastes calculés à partir des styles du navigateur
+  pour l'action primaire et la navigation active (seuil 4,5:1).
+- Captures Chromium de connexion/inscription, tableau de bord, projets, formulaire,
+  profil et analyses examinées visuellement ; ajustement de la densité des métadonnées
+  mobiles et remplacement du sélecteur de fichier natif tronqué par un contrôle stylé.
+  Les captures privées sont des pièces jointes du rapport Playwright.
+
+Difficultés et corrections : une balise option incorrecte a été signalée par
+ESLint puis corrigée avant les contrôles réussis. Le build des packages partagés
+redémarre l'API de développement : une première capture de connexion montrait
+l'erreur réelle du proxy pendant ce redémarrage. Les captures ont été reprises
+après disponibilité de l'API. Une ancienne erreur réseau restait affichée après
+confirmation d'une session absente ; clearSession l'efface désormais, avec un test
+de régression. Le suivi d'un échec technique ne marque pas le traitement comme
+réussi et ne promet pas de rapport disponible.
+
+Limites : Chromium uniquement ; Safari, Firefox, lecteurs d'écran, zoom système
+et appareils tactiles physiques restent à contrôler. Les contrastes ciblés et
+tests clavier ne constituent pas un audit exhaustif WCAG. Les avertissements
+Node VM Modules/couleurs restent présents sans échec des passes réussies.
+Traces locales dans .tmp/redesign-*.log ; captures et rapports sont ignorés par Git.

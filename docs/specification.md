@@ -126,6 +126,33 @@ durée. Pas de score global non défini.
 Export : schemaVersion, métadonnées, profil/moteur, indicateurs et diagnostics.
 Erreurs API : code stable, message lisible, identifiant de requête ; aucune stack exposée.
 
+## Direction visuelle et ergonomie
+
+L'interface adopte une identité « atelier de code » : navigation vert profond,
+fond clair légèrement chaud et accents menthe. Les rouges, ocres et bleus servent
+aux diagnostics et aux états, accompagnés de textes et d'icônes. Aucun score ou
+pourcentage d'avancement n'est inventé à partir d'un état du worker.
+
+Les variables de couleurs, surfaces, typographie, rayons, focus et champs sont
+centralisées dans apps/web/src/style.css. Les espacements suivent l'échelle
+Tailwind de quatre pixels. Les fontes système et monospace restent locales ;
+aucune police distante ni bibliothèque d'icônes supplémentaire n'est requise.
+AppIcon fournit une famille SVG homogène ; EmptyState, ResourceState, MetricCard,
+AnalysisStatus et AnalysisProgress composent les écrans sans logique métier dupliquée.
+
+Sur ordinateur, la navigation latérale donne un repère permanent. Sur tablette
+et mobile, elle devient une navigation compacte qui reste accessible sans menu
+masqué. La liste des projets recherche dans les noms/descriptions réellement reçus
+de l'API. Les diagnostics conservent leur tableau sur ordinateur et deviennent
+des fiches sur téléphone, avec les mêmes filtres et pages. L'export ne dépend
+pas des filtres : il contient toujours le rapport complet enregistré.
+
+Les liens d'évitement, titres de document, focus après navigation, labels de
+formulaires, états annoncés, confirmation de suppression avec retour du focus
+et fermeture par Échap font partie du parcours. Les transitions et animations
+respectent prefers-reduced-motion. Les contrôles automatisés et captures Chromium
+complètent, sans remplacer, une revue avec lecteurs d'écran et autres navigateurs.
+
 ## Lots et critères d'acceptation futurs
 
 1. Socle : installation figée, lint, typage, builds, tests de démarrage, documentation.

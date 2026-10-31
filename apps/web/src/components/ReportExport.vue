@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppIcon from './AppIcon.vue';
 import { ref, watch } from 'vue';
 import type { AnalysisStatus } from '@codeaudit/contracts';
 import { analysesApi } from '../api/analyses';
@@ -28,33 +29,50 @@ async function download() {
 }
 </script>
 <template>
-  <div class="my-6">
+  <section
+    class="my-6 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-[#dfe5df] bg-[#f0f4ed] px-5 py-4"
+    aria-label="Export du rapport"
+  >
+    <div class="flex items-center gap-3">
+      <AppIcon
+        name="file"
+        :size="21"
+        class="text-indigo-700"
+      /><div>
+        <h2 class="text-sm font-semibold">
+          Votre rapport, à emporter
+        </h2><p class="mt-1 text-xs text-slate-600">
+          {{ status === 'SUCCEEDED' ? 'Les données enregistrées, dans un fichier JSON versionné.' : status === 'FAILED' ? 'Aucun rapport exportable pour un échec technique.' : 'L’export sera disponible après la réussite du traitement.' }}
+        </p>
+      </div>
+    </div>
     <button
-      class="button-primary"
+      class="button-secondary"
       :disabled="loading || status !== 'SUCCEEDED'"
       @click="download"
     >
-      {{ loading ? 'Préparation du téléchargement…' : 'Exporter le rapport JSON' }}
+      <span
+        v-if="loading"
+        class="spinner"
+        aria-hidden="true"
+      /><AppIcon
+        v-else
+        name="download"
+        :size="17"
+      />{{ loading ? 'Préparation du téléchargement…' : 'Exporter le rapport JSON' }}
     </button>
-    <p
-      v-if="status !== 'SUCCEEDED'"
-      class="mt-2 text-sm text-slate-600"
-    >
-      {{ status === 'FAILED' ? 'Aucun rapport exportable pour un échec technique.' : 'L’export sera disponible après la réussite du traitement.' }}
-    </p>
     <p
       v-if="error"
       role="alert"
-      class="mt-3 text-sm text-red-800"
+      class="w-full text-sm text-red-800"
     >
       {{ error }} Réessayez le téléchargement.
-    </p>
-    <p
+    </p><p
       v-if="success"
       role="status"
-      class="mt-3 text-sm text-emerald-800"
+      class="w-full text-sm text-emerald-800"
     >
       Téléchargement du rapport JSON déclenché.
     </p>
-  </div>
+  </section>
 </template>
