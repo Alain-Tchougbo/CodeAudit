@@ -5,10 +5,16 @@ import { AnalysesService } from './analyses.service';
 import { HistoryQuery } from './history.dto';
 import { ReportExportService } from './report-export.service';
 import { CurrentUser } from '../auth/auth.types';
+import { ComparisonQuery, ComparisonService } from './comparison.service';
 
 @Controller()
 export class AnalysesController {
-  constructor(private readonly analyses: AnalysesService, private readonly exports: ReportExportService) {}
+  constructor(private readonly analyses: AnalysesService, private readonly exports: ReportExportService, private readonly comparisons: ComparisonService) {}
+
+  @Get('analyses/:id/comparison')
+  comparison(@Param('id', ParseUUIDPipe) id: string, @Query() query: ComparisonQuery, @CurrentUser() userId: string) {
+    return this.comparisons.compare(id, query.baselineId, userId);
+  }
 
   @Get('analyses/:id/report')
   async report(

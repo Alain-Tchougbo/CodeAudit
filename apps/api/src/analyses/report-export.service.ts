@@ -4,6 +4,7 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import type { AnalysisExport } from '@codeaudit/contracts';
+import type { Analysis } from '@codeaudit/database';
 import { AnalysesService } from './analyses.service';
 
 const schema = JSON.parse(readFileSync(require.resolve('@codeaudit/contracts/schemas/report-export.v1.schema.json'), 'utf8'));
@@ -17,6 +18,10 @@ export class ReportExportService {
 
   async export(id: string, ownerId: string): Promise<AnalysisExport> {
     const stored = await this.analyses.get(id, ownerId);
+    return this.present(stored);
+  }
+
+  present(stored: Analysis): AnalysisExport {
     if (stored.status === 'QUEUED' || stored.status === 'RUNNING') {
       throw new ConflictException({ code: 'ANALYSIS_NOT_FINISHED', message: 'L’analyse n’est pas encore terminée. Réessayez après la fin du traitement.' });
     }

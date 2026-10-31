@@ -1,4 +1,4 @@
-import type { AnalysisHistory, AnalysisResults, AnalysisSummary, Dashboard } from '@codeaudit/contracts';
+import type { AnalysisComparison, AnalysisHistory, AnalysisResults, AnalysisSummary, Dashboard } from '@codeaudit/contracts';
 
 import { apiResponse } from './http';
 const response = (path: string, signal?: AbortSignal, options: RequestInit = {}) => apiResponse(path, { ...options, signal });
@@ -12,6 +12,7 @@ export const analysesApi = {
   dashboard: (signal?: AbortSignal) => get<Dashboard>('/dashboard', signal),
   get: (id: string, signal?: AbortSignal) => get<AnalysisSummary>(`/analyses/${encodeURIComponent(id)}`, signal),
   results: (id: string, signal?: AbortSignal) => get<AnalysisResults>(`/analyses/${encodeURIComponent(id)}/results`, signal),
+  compare: (targetId: string, baselineId: string, signal?: AbortSignal) => get<AnalysisComparison>(`/analyses/${encodeURIComponent(targetId)}/comparison?${new URLSearchParams({ baselineId })}`, signal),
   history: (projectId: string, cursor?: string, signal?: AbortSignal) => {
     const query = new URLSearchParams({ limit: '20' });
     if (cursor) query.set('cursor', cursor);

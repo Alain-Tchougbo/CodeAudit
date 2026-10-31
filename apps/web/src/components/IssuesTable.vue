@@ -3,7 +3,9 @@ import AppIcon from './AppIcon.vue';
 import EmptyState from './EmptyState.vue';
 import { computed, ref, watch } from 'vue';
 import type { AnalysisIssue } from '@codeaudit/contracts';
-const props = defineProps<{ issues: AnalysisIssue[] }>();
+const props = withDefaults(defineProps<{ issues: AnalysisIssue[]; title?: string; emptyTitle?: string; emptyDescription?: string }>(), {
+  title: 'Problèmes détectés', emptyTitle: 'Aucun problème détecté dans cette analyse.', emptyDescription: 'Le moteur n’a relevé aucun diagnostic pour le profil de règles utilisé.',
+});
 const severity = ref('');
 const file = ref('');
 const rule = ref('');
@@ -26,7 +28,7 @@ function reset() { severity.value = ''; file.value = ''; rule.value = ''; }
     <div class="section-heading">
       <div>
         <h2 id="issues-title">
-          Problèmes détectés
+          {{ title }}
         </h2><p class="mt-2 text-xs text-slate-500">
           Du fichier au diagnostic, retrouvez ce qui mérite votre attention.
         </p>
@@ -134,8 +136,8 @@ function reset() { severity.value = ''; file.value = ''; rule.value = ''; }
       </div>
       <EmptyState
         v-if="!visible.length"
-        :title="issues.length ? 'Aucun problème ne correspond aux filtres.' : 'Aucun problème détecté dans cette analyse.'"
-        :description="issues.length ? 'Ajustez la gravité, le fichier ou la règle pour élargir votre recherche.' : 'Le moteur n’a relevé aucun diagnostic pour le profil de règles utilisé.'"
+        :title="issues.length ? 'Aucun problème ne correspond aux filtres.' : emptyTitle"
+        :description="issues.length ? 'Ajustez la gravité, le fichier ou la règle pour élargir votre recherche.' : emptyDescription"
         :icon="issues.length ? 'search' : 'check'"
       />
       <div v-else>
@@ -144,7 +146,7 @@ function reset() { severity.value = ''; file.value = ''; rule.value = ''; }
           role="table"
         >
           <caption class="sr-only">
-            Problèmes détectés, page {{ page }} sur {{ pages }}
+            {{ title }}, page {{ page }} sur {{ pages }}
           </caption>
           <thead>
             <tr>

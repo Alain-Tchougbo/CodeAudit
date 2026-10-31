@@ -3,17 +3,34 @@ import type { AnalysisSummary } from '@codeaudit/contracts';
 import AnalysisStatus from './AnalysisStatus.vue';
 import AppIcon from './AppIcon.vue';
 import { date, duration, number } from '../format';
-defineProps<{ analyses: (AnalysisSummary & { projectName?: string })[] }>();
+withDefaults(defineProps<{ analyses: (AnalysisSummary & { projectName?: string })[]; selectable?: boolean; selectedIds?: string[] }>(), { selectable: false, selectedIds: () => [] });
+defineEmits<{ toggle: [analysis: AnalysisSummary] }>();
 </script>
 <template>
   <ul class="divide-y divide-[#edf0ea]">
     <li
       v-for="analysis in analyses"
       :key="analysis.id"
+      class="flex"
     >
+      <label
+        v-if="selectable"
+        class="flex w-12 shrink-0 items-start justify-center pt-5"
+      >
+        <span class="flex size-11 items-center justify-center">
+          <input
+            type="checkbox"
+            class="size-4 accent-[#176448]"
+            :checked="selectedIds.includes(analysis.id)"
+            :disabled="analysis.status !== 'SUCCEEDED' || (selectedIds.length >= 2 && !selectedIds.includes(analysis.id))"
+            :aria-label="`Sélectionner l’analyse ${analysis.id.slice(0, 8)} du ${date(analysis.createdAt)}`"
+            @change="$emit('toggle', analysis)"
+          >
+        </span>
+      </label>
       <RouterLink
         :to="`/analyses/${analysis.id}`"
-        class="group flex flex-wrap items-center justify-between gap-4 px-5 py-5 transition hover:bg-[#fbfcf9]"
+        class="group flex min-w-0 flex-1 flex-wrap items-center justify-between gap-4 px-5 py-5 transition hover:bg-[#fbfcf9]"
       >
         <div class="flex min-w-0 flex-1 items-start gap-3"><span class="mt-1 hidden size-9 shrink-0 items-center justify-center rounded-md border border-[#e4e9df] text-[#6b8070] sm:flex"><AppIcon
           name="file"

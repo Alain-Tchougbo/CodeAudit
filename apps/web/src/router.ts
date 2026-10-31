@@ -7,6 +7,7 @@ import HomeView from './views/HomeView.vue';
 import AnalysisDetailView from './views/AnalysisDetailView.vue';
 import AuthView from './views/AuthView.vue';
 import ProfileView from './views/ProfileView.vue';
+import AnalysisComparisonView from './views/AnalysisComparisonView.vue';
 import { restoreSession } from './auth';
 import { authState } from './auth-state';
 
@@ -18,6 +19,7 @@ export const router = createRouter({
     { path: '/profile', name: 'profile', component: ProfileView },
     { path: '/', name: 'dashboard', component: HomeView },
     { path: '/analyses/:id', name: 'analysis-detail', component: AnalysisDetailView },
+    { path: '/analyses/:id/compare', name: 'analysis-comparison', component: AnalysisComparisonView },
     { path: '/projects', name: 'projects', component: ProjectsListView },
     { path: '/projects/new', name: 'project-create', component: ProjectCreateView },
     { path: '/projects/:id/edit', name: 'project-edit', component: ProjectEditView },

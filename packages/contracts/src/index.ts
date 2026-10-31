@@ -107,6 +107,19 @@ export interface AnalysisResults {
   };
 }
 
+export interface AnalysisComparison {
+  schemaVersion: 1;
+  matchingVersion: 'file-rule-message-v1';
+  baseline: AnalysisSummary;
+  target: AnalysisSummary;
+  counts: { added: number; persistent: number; resolved: number; moved: number };
+  deltas: { errorCount: number; warningCount: number; analyzedFileCount: number; affectedFileCount: number };
+  coverage: { newlyAnalyzedFiles: string[]; noLongerAnalyzedFiles: string[] };
+  added: AnalysisIssue[];
+  resolved: AnalysisIssue[];
+  persistent: { baseline: AnalysisIssue; target: AnalysisIssue; positionChanged: boolean }[];
+}
+
 export interface Dashboard {
   projectCount: number;
   analysisCount: number;
