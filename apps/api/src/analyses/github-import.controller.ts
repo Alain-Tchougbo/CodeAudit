@@ -1,14 +1,15 @@
 import { BadRequestException, Body, Controller, HttpCode, HttpException, NotFoundException, Param, ParseUUIDPipe, Post } from '@nestjs/common';
-import { IsBoolean, IsInt, IsString, Matches, Max, MaxLength, Min, ValidateIf } from 'class-validator';
+import { IsBoolean, IsInt, IsString, Matches, Max, MaxLength, Min, ValidateBy, ValidateIf } from 'class-validator';
 import type { GitImportRequest } from '@codeaudit/contracts';
 import { CurrentUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 import { AnalysesService } from './analyses.service';
 import { GitHubArchiveService } from './github-archive.service';
-import { GITHUB_REPOSITORY } from './git-source';
+import { GITHUB_REPOSITORY, validGitReference } from './git-source';
 export class GitImportDto implements GitImportRequest {
   @IsString() @MaxLength(140) @Matches(GITHUB_REPOSITORY) repository!: string;
-  @ValidateIf((_object, value: unknown) => value !== undefined) @IsString() @MaxLength(200) @Matches(/^[^\x00-\x20\x7f]+$/) ref?: string;
+  @ValidateIf((_object, value: unknown) => value !== undefined) @IsString() @MaxLength(200)
+  @ValidateBy({ name: 'gitReference', validator: { validate: (value: unknown) => typeof value === 'string' && validGitReference(value), defaultMessage: () => 'La référence Git doit être non vide et ne pas contenir d’espaces ou de caractères de contrôle.' } }) ref?: string;
   @ValidateIf((_object, value: unknown) => value !== undefined) @IsInt() @Min(1) @Max(2147483647) pullRequest?: number;
   @ValidateIf((_object, value: unknown) => value !== undefined) @IsBoolean() captureContext?: boolean;
 }

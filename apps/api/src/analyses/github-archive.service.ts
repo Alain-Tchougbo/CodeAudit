@@ -1,7 +1,7 @@
 import { BadGatewayException, GatewayTimeoutException, HttpException, Injectable, UnprocessableEntityException } from '@nestjs/common';
 import type { GitImportRequest, GitSource } from '@codeaudit/contracts';
 import { IMPORT_LIMITS } from '@codeaudit/analysis-jobs';
-import { GITHUB_REPOSITORY } from './git-source';
+import { GITHUB_REPOSITORY, validGitReference } from './git-source';
 
 const invalid = () => new BadGatewayException({ code: 'GITHUB_RESPONSE_INVALID', message: 'La réponse du fournisseur Git est invalide.' });
 function object(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw invalid(); return value as Record<string, unknown>; }
@@ -44,7 +44,7 @@ export class GitHubArchiveService {
         archiveRepository = headRepo.full_name; requestedRef = `pull/${input.pullRequest}`; commitSha = head.sha;
       } else {
         const ref = input.ref ?? repository.default_branch;
-        if (typeof ref !== 'string' || !ref.length || ref.length > 200 || /[\x00-\x20\x7f]/.test(ref)) throw invalid();
+        if (typeof ref !== 'string' || !validGitReference(ref)) throw invalid();
         requestedRef = ref; commitSha = (await api(`${input.repository}/commits/${encodeURIComponent(ref)}`)).sha;
       }
       if (typeof commitSha !== 'string' || !/^[a-f0-9]{40}$/.test(commitSha)) throw invalid();

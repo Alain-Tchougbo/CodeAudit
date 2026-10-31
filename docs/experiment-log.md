@@ -484,3 +484,39 @@ et un échec dans le nouveau test, qui ciblait un tbody inexistant pour l'histor
 rendu comme liste. Même échec en CI, aucune fusion. Sélecteur corrigé pour la
 section d'historique réelle, avec réouverture de l'analyse depuis cette liste.
 Suite Chromium complète relancée ; résultat définitif à consigner après exécution.
+
+Résultats définitifs du lot 5 : 15/15 parcours Chromium réussis (1,4 minute) après
+correction du sélecteur d'historique ; CI verte, PR 11 fusionnée par squash sur
+staging6d9562c. Aucun contournement des contrôles obligatoires. La branche du lot
+Git a intégré ce staging, avec résolution des conflits en conservant les dates
+de suivi, l'annulation et la provenance Git.
+
+## 31 octobre 2026 — dépôts GitHub et têtes de PR, lot 6
+
+Branche feat/github-analysis-import depuis origin/staging. Téléchargements HTTPS
+bornés à domaines fixes, résolution en commit, prise en charge des forks publics,
+quotas/délais, validation ZIP existante puis normalisation du dossier enveloppe
+avec vérification des chemins absolus avant déplacement. Aucun git, script,
+plugin importé ou dépendance du projet exécuté. Migration
+20261031000600_git_source appliquée aux bases locale et dédiée aux tests.
+Provenance immuable affichée et export v2 ; exports ZIP historiques restent v1,
+les schémas communs sont référencés sans recopier les diagnostics. Aucun package
+externe ajouté. Formulaire Vue, choix référence/PR et consentement aux extraits.
+
+Difficultés corrigées : forme des lignes it.each dans un test de normalisation,
+puis lint no-control-regex sur les gardes de référence. Validation explicite des
+caractères à la place des expressions signalées, sans désactiver de règle.
+pnpm check ensuite réussi : 234 tests (28 analyzer, 56 jobs, 43 API, 107 Vue),
+lint, typage, builds et Prisma. Sept intégrations PostgreSQL ciblées réussies en
+22 secondes : propriété/CSRF/DTO, normalisation/worker/extraits, JSON v2 exact et
+immuable, fork, refus des ZIP hostiles, échec fournisseur, changement de propriétaire
+durant téléchargement et borne des téléchargements concurrents. Le fournisseur
+est remplacé dans ces intégrations, la base, l'extraction et le moteur sont réels.
+Suites complètes PostgreSQL et Chromium lancées ; résultats à consigner ensuite.
+
+Essai réseau réel séparé : expressjs/cookie-parser commit
+1f2a3a2037c4efe01605e064e7cc326008be7287, 14 369 octets téléchargés, normalisés,
+deux fichiers analysés par Essentiel, 45 erreurs et un avertissement calculés.
+Sources temporaires supprimées avec garde de chemin ; trace .tmp/github-live.log.
+Cela valide un dépôt public, pas une configuration OAuth privée ni un webhook.
+Les limites de globals de tests et du moteur syntaxique sont documentées.

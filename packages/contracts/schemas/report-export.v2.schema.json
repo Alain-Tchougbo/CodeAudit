@@ -13,11 +13,11 @@
       "properties": {
         "schemaVersion": { "const": 1 },
         "provider": { "const": "GITHUB" },
-        "repository": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$" },
-        "archiveRepository": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$" },
-        "requestedRef": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "repository": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/(?!\\.{1,2}$)[A-Za-z0-9_.-]{1,100}$" },
+        "archiveRepository": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/(?!\\.{1,2}$)[A-Za-z0-9_.-]{1,100}$" },
+        "requestedRef": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[^\\u0000-\\u0020\\u007f]+$" },
         "commitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
-        "pullRequest": { "anyOf": [{ "type": "null" }, { "type": "integer", "minimum": 1 }] }
+        "pullRequest": { "anyOf": [{ "type": "null" }, { "type": "integer", "minimum": 1, "maximum": 2147483647 }] }
       },
       "required": ["schemaVersion", "provider", "repository", "archiveRepository", "requestedRef", "commitSha", "pullRequest"],
       "additionalProperties": false

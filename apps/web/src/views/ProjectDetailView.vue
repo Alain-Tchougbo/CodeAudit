@@ -141,7 +141,10 @@ async function remove(): Promise<void> {
         :key="project.id"
         :project-id="project.id"
       />
-      <GitAnalysisImport :key="`git-${project.id}`" :project-id="project.id" />
+      <GitAnalysisImport
+        :key="`git-${project.id}`"
+        :project-id="project.id"
+      />
       <ProjectAnalyses :project-id="project.id" />
     </template>
   </section>

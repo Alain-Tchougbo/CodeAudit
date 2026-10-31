@@ -31,6 +31,15 @@ Le schéma JSON Schema draft-07 est versionné dans
 le sous-chemin `@codeaudit/contracts/schemas/report-export.v1.schema.json`.
 Le contrat TypeScript public correspondant est `AnalysisExport`.
 
+Les analyses Git disposent d'une enveloppe v2, définie dans
+`packages/contracts/schemas/report-export.v2.schema.json` et son sous-chemin de
+package homonyme. Elle référence les propriétés communes du schéma v1 : conserver
+les deux fichiers pour une validation externe. La v2 ajoute `source` : fournisseur,
+dépôt demandé, dépôt du fork téléchargé, référence, SHA de commit et numéro de PR.
+Ces valeurs proviennent du JSONB de provenance enregistré à la demande. Les
+analyses ZIP sans provenance continuent de produire exactement l'enveloppe v1.
+Les diagnostics et statistiques gardent leur propre schéma moteur inchangé.
+
 L'enveloppe contient :
 
 - `schemaVersion: 1`, version du format d'export ;
